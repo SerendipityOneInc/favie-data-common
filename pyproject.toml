@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "favie-data-common"
+version = "0.0.1"
+description = ""
+authors = ["winston <winston@srp.one>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+asyncstdlib = "3.12.4"
+python-json-logger = "2.0.7"
+google-cloud-bigtable = "2.26.0"
+tldextract = "5.1.2"
+pydantic = "2.6.4"
+pydantic-settings = "2.2.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
