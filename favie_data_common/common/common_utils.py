@@ -1,9 +1,9 @@
 import re
 import hashlib
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime,timezone
 from collections.abc import Sized
-
+from dateutil import parser
 import tldextract
 
 class CommonUtils():
@@ -77,6 +77,32 @@ class CommonUtils():
     @staticmethod
     def current_timestamp():
         return datetime.now().timestamp()
+    
+    def utc_string_to_timestamp(utc_string: str) -> float:
+        """
+        将 UTC 时间字符串转换为 UNIX 时间戳。
+        
+        支持的格式:
+        - "2024-08-29T10:17:21.164262Z"
+        - "2024-08-29T10:17:21.164262+00:00"
+        
+        :param utc_string: UTC 时间字符串
+        :return: UNIX 时间戳（浮点数）
+        """
+        try:
+            # 使用 dateutil 解析时间字符串
+            dt = parser.parse(utc_string)
+            
+            # 确保时间是 UTC
+            if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            elif dt.tzinfo != timezone.utc:
+                dt = dt.astimezone(timezone.utc)
+            
+            # 返回时间戳
+            return dt.timestamp()
+        except ValueError as e:
+            raise ValueError(f"无法解析时间字符串: {utc_string}. 错误: {str(e)}")
     
     @staticmethod
     def divide_chunks(lst, n):
