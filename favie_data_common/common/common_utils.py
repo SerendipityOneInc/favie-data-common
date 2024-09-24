@@ -78,32 +78,38 @@ class CommonUtils():
     def current_timestamp():
         return datetime.now().timestamp()
     
-    def utc_string_to_timestamp(utc_string: str) -> float:
+    @staticmethod
+    def datetime_string_to_timestamp(date_string: str, assume_utc: bool = True) -> float:
         """
-        将 UTC 时间字符串转换为 UNIX 时间戳。
+        将日期时间字符串转换为 UNIX 时间戳。
         
-        支持的格式:
+        支持的格式包括但不限于:
         - "2024-08-29T10:17:21.164262Z"
         - "2024-08-29T10:17:21.164262+00:00"
+        - "2024-08-29T10:17:21"
         
-        :param utc_string: UTC 时间字符串
+        :param date_string: 日期时间字符串
+        :param assume_utc: 如果为 True，没有时区信息的字符串将被假定为 UTC 时间
         :return: UNIX 时间戳（浮点数）
         """
         try:
             # 使用 dateutil 解析时间字符串
-            dt = parser.parse(utc_string)
+            dt = parser.parse(date_string)
             
-            # 确保时间是 UTC
-            if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            elif dt.tzinfo != timezone.utc:
+            # 处理时区
+            if dt.tzinfo is None:
+                if assume_utc:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    raise ValueError("时间字符串没有时区信息，且 assume_utc 为 False")
+            else:
                 dt = dt.astimezone(timezone.utc)
             
             # 返回时间戳
             return dt.timestamp()
         except ValueError as e:
-            raise ValueError(f"无法解析时间字符串: {utc_string}. 错误: {str(e)}")
-    
+            raise ValueError(f"无法解析时间字符串: {date_string}. 错误: {str(e)}")
+
     @staticmethod
     def divide_chunks(lst, n):
         # 计算每个分片应有的长度

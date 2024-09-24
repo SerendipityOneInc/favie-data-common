@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from favie_data_common.common.common_utils import CommonUtils  
 
 class TestCommonUtils(unittest.TestCase):
@@ -72,5 +72,47 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(CommonUtils.get_full_subdomain("https://www.example.com/path"), "www.example.com")
         self.assertEqual(CommonUtils.get_full_subdomain("http://sub.example.com"), "sub.example.com")
 
+    def test_utc_z_suffix(self):
+        result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21.164262Z")
+        expected = datetime(2024, 8, 29, 10, 17, 21, 164262, tzinfo=timezone.utc).timestamp()
+        self.assertAlmostEqual(result, expected, places=6)
+
+    def test_utc_offset_suffix(self):
+        result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21.164262+00:00")
+        expected = datetime(2024, 8, 29, 10, 17, 21, 164262, tzinfo=timezone.utc).timestamp()
+        self.assertAlmostEqual(result, expected, places=6)
+
+    def test_non_utc_timezone(self):
+        result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21+08:00")
+        expected = datetime(2024, 8, 29, 2, 17, 21, tzinfo=timezone.utc).timestamp()
+        self.assertAlmostEqual(result, expected, places=6)
+
+    def test_no_timezone_assume_utc(self):
+        result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21")
+        expected = datetime(2024, 8, 29, 10, 17, 21, tzinfo=timezone.utc).timestamp()
+        self.assertAlmostEqual(result, expected, places=6)
+
+    def test_no_timezone_not_assume_utc(self):
+        with self.assertRaises(ValueError):
+            CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21", assume_utc=False)
+
+    def test_invalid_date_string(self):
+        with self.assertRaises(ValueError):
+            CommonUtils.datetime_string_to_timestamp("invalid date")
+
+    def test_different_date_formats(self):
+        formats = [
+            "2024-08-29 10:17:21Z",
+            "29/08/2024 10:17:21+00:00",
+            "Aug 29 2024 10:17:21 GMT",
+        ]
+        expected = datetime(2024, 8, 29, 10, 17, 21, tzinfo=timezone.utc).timestamp()
+        for date_format in formats:
+            with self.subTest(date_format=date_format):
+                result = CommonUtils.datetime_string_to_timestamp(date_format)
+                self.assertAlmostEqual(result, expected, places=6)
+                
 if __name__ == '__main__':
     unittest.main()
+    
+    
