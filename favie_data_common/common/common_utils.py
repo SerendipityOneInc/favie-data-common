@@ -1,9 +1,9 @@
 import re
 import hashlib
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime,timezone
 from collections.abc import Sized
-
+from dateutil import parser
 import tldextract
 
 class CommonUtils():
@@ -79,6 +79,38 @@ class CommonUtils():
         return datetime.now().timestamp()
     
     @staticmethod
+    def datetime_string_to_timestamp(date_string: str, assume_utc: bool = True) -> float:
+        """
+        将日期时间字符串转换为 UNIX 时间戳。
+        
+        支持的格式包括但不限于:
+        - "2024-08-29T10:17:21.164262Z"
+        - "2024-08-29T10:17:21.164262+00:00"
+        - "2024-08-29T10:17:21"
+        
+        :param date_string: 日期时间字符串
+        :param assume_utc: 如果为 True，没有时区信息的字符串将被假定为 UTC 时间
+        :return: UNIX 时间戳（浮点数）
+        """
+        try:
+            # 使用 dateutil 解析时间字符串
+            dt = parser.parse(date_string)
+            
+            # 处理时区
+            if dt.tzinfo is None:
+                if assume_utc:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    raise ValueError("时间字符串没有时区信息，且 assume_utc 为 False")
+            else:
+                dt = dt.astimezone(timezone.utc)
+            
+            # 返回时间戳
+            return dt.timestamp()
+        except ValueError as e:
+            raise ValueError(f"无法解析时间字符串: {date_string}. 错误: {str(e)}")
+
+    @staticmethod
     def divide_chunks(lst, n):
         # 计算每个分片应有的长度
         chunk_size = len(lst) // n + (1 if len(lst) % n > 0 else 0)
@@ -99,16 +131,18 @@ class CommonUtils():
         return domain
     
     @staticmethod
-    def get_sub_domain(url):
+    def get_subdomain(url):
         """获取主机名对应的域名"""
         ext = tldextract.extract(url)
         return ext.subdomain   
     
     @staticmethod
     def get_full_subdomain(url):
-        return  CommonUtils.get_hostname(url)
+        sub_domain = CommonUtils.get_subdomain(url)
+        domain = CommonUtils.get_domain(url)
+        return  f'{sub_domain}.{domain}' if sub_domain else domain
     
-
-
-
+if __name__ == "__main__":
+    print(CommonUtils.get_full_subdomain("www.shop.lululemon.com:80"))
+    print(CommonUtils.get_subdomain("shop.lululemon.com"))
 

@@ -2,6 +2,8 @@ from typing import Optional
 from pydantic import BaseModel
 from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex
 from favie_data_common.common.common_utils import CommonUtils
+import google.cloud.bigtable.row_filters as sync_row_filters
+from google.cloud.bigtable import Client
 
 bigtable_config = {
     "project_id": "srpdev-7b1d3",
@@ -71,7 +73,7 @@ def test_query_by_city():
     if CommonUtils.not_empty(reviews):
         for review in reviews:
             print(review.model_dump_json(exclude_none=True))
-    
+                
 if __name__ == "__main__":
     test_save()
     test_scan()
