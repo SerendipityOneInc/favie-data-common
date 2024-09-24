@@ -12,7 +12,7 @@ class ApplicationUtils:
         """
         Generate a rowkey for the product detail table.
         """
-        domain = CommonUtils.get_domain(url)
+        domain = CommonUtils.host_trip_www(CommonUtils.get_full_subdomain(url))
         return BigtableUtils.gen_hash_rowkey(f"{sku_id}-{domain}")
     
     def get_webpage_rowkey(url:str):

@@ -64,9 +64,9 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(CommonUtils.get_domain("http://sub.example.com"), "example.com")
 
     def test_get_sub_domain(self):
-        self.assertEqual(CommonUtils.get_sub_domain("https://www.example.com/path"), "www")
-        self.assertEqual(CommonUtils.get_sub_domain("http://sub.example.com"), "sub")
-        self.assertEqual(CommonUtils.get_sub_domain("http://example.com"), "")
+        self.assertEqual(CommonUtils.get_subdomain("https://www.example.com/path"), "www")
+        self.assertEqual(CommonUtils.get_subdomain("http://sub.example.com"), "sub")
+        self.assertEqual(CommonUtils.get_subdomain("http://example.com"), "")
 
     def test_get_full_subdomain(self):
         self.assertEqual(CommonUtils.get_full_subdomain("https://www.example.com/path"), "www.example.com")

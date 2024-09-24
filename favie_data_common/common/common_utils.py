@@ -131,16 +131,18 @@ class CommonUtils():
         return domain
     
     @staticmethod
-    def get_sub_domain(url):
+    def get_subdomain(url):
         """获取主机名对应的域名"""
         ext = tldextract.extract(url)
         return ext.subdomain   
     
     @staticmethod
     def get_full_subdomain(url):
-        return  CommonUtils.get_hostname(url)
+        sub_domain = CommonUtils.get_subdomain(url)
+        domain = CommonUtils.get_domain(url)
+        return  f'{sub_domain}.{domain}' if sub_domain else domain
     
-
-
-
+if __name__ == "__main__":
+    print(CommonUtils.get_full_subdomain("www.shop.lululemon.com:80"))
+    print(CommonUtils.get_subdomain("shop.lululemon.com"))
 
