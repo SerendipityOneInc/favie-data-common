@@ -13,46 +13,6 @@ class ComplexTestModel(BaseModel):
     tags: Optional[List[str]] = None
 
 class TestPydanticUtils(unittest.TestCase):
-
-    # def test_pydantic_field_conver_str(self):
-    #     # 测试原生类型
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str(5), "5")
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str(5.5), "5.5")
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str("test"), "test")
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str(True), "True")
-        
-    #     # 测试 Pydantic 对象
-    #     model = TestModel(name="Alice", age=30)
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str(model), '{"name":"Alice","age":30}')
-        
-    #     # 测试列表
-    #     self.assertEqual(PydanticUtils.pydantic_field_convert_str([1, "two", 3.0]), '[1, "two", 3.0]')
-        
-    #     # 测试不支持的类型
-    #     with self.assertRaises(TypeError):
-    #         PydanticUtils.pydantic_field_convert_str({})
-
-    # def test_str_convert_pydantic_field(self):
-    #     # 测试原生类型
-    #     self.assertEqual(PydanticUtils.str_convert_pydantic_field("5", int), 5)
-    #     self.assertEqual(PydanticUtils.str_convert_pydantic_field("5.5", float), 5.5)
-    #     self.assertEqual(PydanticUtils.str_convert_pydantic_field("test", str), "test")
-    #     self.assertEqual(PydanticUtils.str_convert_pydantic_field("true", bool), True)
-        
-    #     # 测试列表
-    #     self.assertEqual(PydanticUtils.str_convert_pydantic_field('[1, 2, 3]', List[int]), [1, 2, 3])
-        
-    #     # 测试 Pydantic 对象
-    #     json_str = '{"name":"Alice","age":30}'
-    #     model = PydanticUtils.str_convert_pydantic_field(json_str, TestModel)
-    #     self.assertIsInstance(model, TestModel)
-    #     self.assertEqual(model.name, "Alice")
-    #     self.assertEqual(model.age, 30)
-        
-    #     # 测试不支持的类型
-    #     with self.assertRaises(TypeError):
-    #         PydanticUtils.str_convert_pydantic_field("test", dict)
-
     def test_is_type_of_list(self):
         self.assertTrue(PydanticUtils.is_type_of_list(List[int]))
         self.assertTrue(PydanticUtils.is_type_of_list(List[str]))

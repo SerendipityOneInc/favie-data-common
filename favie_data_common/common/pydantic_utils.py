@@ -2,6 +2,8 @@ from typing import Optional, Union, List
 from typing import List, get_args, get_origin
 from pydantic import BaseModel
 
+from favie_data_common.common.common_utils import CommonUtils
+
 
 class PydanticUtils:    
     @staticmethod
@@ -41,7 +43,9 @@ class PydanticUtils:
         if not isinstance(source_obj, type(dest_obj)):
             return None
         
-        for field_name in (merge_fields or source_obj.__dict__.keys()):
+        fields_to_merge = merge_fields if CommonUtils.not_empty(merge_fields) else getattr(source_obj, '__dict__', {}).keys()
+
+        for field_name in fields_to_merge:
             if hasattr(source_obj, field_name):
                 source_value = getattr(source_obj, field_name)
                 if source_value is not None:
