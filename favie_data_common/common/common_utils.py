@@ -93,6 +93,9 @@ class CommonUtils():
         :return: UNIX 时间戳（浮点数）
         """
         try:
+            if not date_string:
+                return None 
+            
             # 使用 dateutil 解析时间字符串
             dt = parser.parse(date_string)
             

@@ -91,6 +91,10 @@ class TestCommonUtils(unittest.TestCase):
         result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21")
         expected = datetime(2024, 8, 29, 10, 17, 21, tzinfo=timezone.utc).timestamp()
         self.assertAlmostEqual(result, expected, places=6)
+        
+    def test_none_utc(self):
+        result = CommonUtils.datetime_string_to_timestamp(None)
+        self.assertEqual(result, None)       
 
     def test_no_timezone_not_assume_utc(self):
         with self.assertRaises(ValueError):
