@@ -29,7 +29,8 @@ class BigtableRepository:
                  gen_rowkey:Callable[[BaseModel], str],
                  default_cf:str,
                  cf_config:dict[str,str]=None,
-                 bigtable_index:'BigtableIndexRepository'=None
+                 bigtable_index:'BigtableIndexRepository'=None,
+                 cf_migration:dict[str,(str,str)]=None
             ):
         '''
             bigtable_project_id: BigTable 项目 ID
@@ -40,6 +41,7 @@ class BigtableRepository:
             cf_config: 字段对应的列族，只需要配置不对应default_cf的即可，如果为无配置则使用default_cf
             default_cf: 默认列族，如果cf_config中没有配置则使用default_cf
             bigtable_index:bigtable二级索引
+            cf_migration:列族迁移配置，key为列名，value为（旧列簇,新列簇）元组
         '''
         self.bigtable_project_id = bigtable_project_id
         self.bigtable_instance_id = bigtable_instance_id
@@ -52,6 +54,7 @@ class BigtableRepository:
         self.cf_config = cf_config
         self.default_cf = default_cf
         self.bigtable_index = bigtable_index
+        self.cf_migration = cf_migration
         self.logger = logging.getLogger(__name__)
     
     def save_model(self, * ,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
@@ -192,6 +195,7 @@ class BigtableRepository:
     #convert bigtable row to pydantic object
     def __convert_row_to_model(self,row):
         model_dict = {}
+        migration_status = set()
         for column_family in row.cells:
             for column_qualifier, cell_list in row.cells[column_family].items():
                 if len(cell_list) > 0:
@@ -201,7 +205,15 @@ class BigtableRepository:
                     field_type = PydanticUtils.get_field_type(self.model_class, field_name)
                     #if field_type is None,ignore this field,otherwise convert it to pydantic field
                     if field_type is not None:
-                        model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                        if self.cf_migration and field_name in self.cf_migration.keys():
+                            old_cf,new_cf = self.cf_migration[field_name]
+                            if column_family == old_cf and field_name not in migration_status:
+                                model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                            elif column_family == new_cf:
+                                migration_status.add(field_name)
+                                model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                        else:
+                            model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
         return self.model_class(**model_dict)
     
 

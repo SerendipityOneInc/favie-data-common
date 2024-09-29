@@ -66,8 +66,6 @@ def test_scan():
         for person in persons:
             print(person.model_dump_json(exclude_none=True))
  
-    
-        
 def test_query_by_city():
     reviews = person_repository.query_models(index_key="hangzhou")
     if CommonUtils.not_empty(reviews):
