@@ -26,8 +26,8 @@ class BigtableRepository:
                  bigtable_instance_id:str,
                  bigtable_table_id:str,
                  model_class:Type[BaseModel],
-                 gen_rowkey:Callable[[BaseModel], str],
-                 default_cf:str,
+                 gen_rowkey:Callable[[BaseModel], str] = None,
+                 default_cf:str = None,
                  cf_config:dict[str,str]=None,
                  bigtable_index:'BigtableIndexRepository'=None,
                  cf_migration:dict[str,(str,str)]=None
