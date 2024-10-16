@@ -30,6 +30,7 @@ class ApplicationUtils:
         """
         if not f_sku_id:
             return None
+        
         items = f_sku_id.split("-")
         if len(items) != 2:
             return None
