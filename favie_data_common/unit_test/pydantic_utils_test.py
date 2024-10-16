@@ -53,6 +53,10 @@ class TestPydanticUtils(unittest.TestCase):
         # 测试 None 值的处理
         self.assertEqual(PydanticUtils.merge_object(source_obj=None,dest_obj= dest), dest)
         self.assertEqual(PydanticUtils.merge_object(source_obj=source,dest_obj= None), source)
-
+        
+    def test_serialize_list(self):
+        test_models = [TestModel(name="jack",age=19),TestModel(name="wins",age=18)]
+        self.assertEqual(PydanticUtils.serialize_list(test_models),'[{"name":"jack","age":19},{"name":"wins","age":18}]')
+        
 if __name__ == '__main__':
     unittest.main()
