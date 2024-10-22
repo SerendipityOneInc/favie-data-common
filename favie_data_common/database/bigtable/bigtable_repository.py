@@ -19,6 +19,7 @@ from google.cloud.bigtable.row_filters import (
 from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils
 from favie_data_common.common.common_utils import CommonUtils
 from favie_data_common.common.pydantic_utils import PydanticUtils
+from concurrent.futures import ThreadPoolExecutor
 
 class BigtableRepository:
     def __init__(self,*,
@@ -55,6 +56,7 @@ class BigtableRepository:
         self.default_cf = default_cf
         self.bigtable_index = bigtable_index
         self.cf_migration = cf_migration
+        self.executor = ThreadPoolExecutor(max_workers=4)
         self.logger = logging.getLogger(__name__)
     
     def save_model(self, * ,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
@@ -157,7 +159,7 @@ class BigtableRepository:
         if row is None:
             self.logger.debug(f"Can't find model: row_key = {row_key}, version = {version} , fields = {fields}")
             return None
-        return self.__convert_row_to_model(row)
+        return self.__convert_row_to_model(row=row,row_key=row_key)
     
     def __save_model(self, * ,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None) -> None:
         """
@@ -193,7 +195,7 @@ class BigtableRepository:
         return row_set
 
     #convert bigtable row to pydantic object
-    def __convert_row_to_model(self,row):
+    def __convert_row_to_model(self,row,row_key:str=None):
         model_dict = {}
         migration_status = set()
         for column_family in row.cells:
@@ -214,8 +216,23 @@ class BigtableRepository:
                                 model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
                         else:
                             model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+        if migration_status and row_key:
+            self.executor.submit(self.__delete_migeration_fields,row_key,migration_status)
         return self.model_class(**model_dict)
     
+    
+    def __delete_migeration_fields(self,row_key:str,fields:set[str]):
+        try:
+            if self.cf_migration and fields:
+                row = self.table.row(row_key)
+                for field in fields:
+                    if field in self.cf_migration.keys():
+                        old_cf,new_cf = self.cf_migration[field]
+                        row.delete_cell(old_cf,field.encode("utf-8"))
+                row.commit()
+        except Exception as e:
+            self.logger.error(f"delete migration fields failed,row_key:{row_key},fields:{fields},error:{e}")
+
 
     #generate filters for querying bigtable based on parameters
     def __gen_filters(self,*,version:Optional[str],fields:Optional[list[str]],other_filters:list = None):
@@ -271,6 +288,7 @@ class BigtableRepository:
     
     def close(self):
         self.client.close()
+        self.executor.shutdown()
         
         
 class BigtableIndex(BaseModel):
