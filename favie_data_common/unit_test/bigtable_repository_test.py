@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from pydantic import BaseModel
 from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex
@@ -36,6 +37,16 @@ person_city_index_repository = BigtableIndexRepository(
     index_cf="index_cf",
     gen_index=gen_review_index
 )
+cf_migeration: dict[str, tuple[str, str]] = {
+    "address":("main_cf","new_cf"),
+    "city":("main_cf","new_cf")
+}
+
+cf_config={
+    "address":"new_cf",
+    "city":"new_cf"
+}
+
 
 person_repository = BigtableRepository(
     bigtable_project_id=bigtable_config["project_id"],
@@ -44,7 +55,9 @@ person_repository = BigtableRepository(
     model_class=Person,
     gen_rowkey=gen_review_rowkey,
     default_cf="main_cf",
-    bigtable_index=person_city_index_repository    
+    cf_config=cf_config,
+    bigtable_index=person_city_index_repository,
+    cf_migration=cf_migeration    
 )
 
 def test_save():
@@ -71,8 +84,15 @@ def test_query_by_city():
     if CommonUtils.not_empty(reviews):
         for review in reviews:
             print(review.model_dump_json(exclude_none=True))
+            
+def test_read_with_cf_migeration():
+    for i in range(1,10):
+        person = person_repository.read_model(row_key=f"B0000{i}")
+        print(person.model_dump_json(exclude_none=True))
                 
 if __name__ == "__main__":
     test_save()
-    test_scan()
-    test_query_by_city()
+    # test_scan()
+    # test_query_by_city()
+    test_read_with_cf_migeration()
+    time.sleep(10)
