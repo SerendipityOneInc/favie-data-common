@@ -37,9 +37,11 @@ person_city_index_repository = BigtableIndexRepository(
     index_cf="index_cf",
     gen_index=gen_review_index
 )
+
 cf_migeration: dict[str, tuple[str, str]] = {
     "address":("main_cf","new_cf"),
-    "city":("main_cf","new_cf")
+    "city":("main_cf","new_cf"),
+    "favorite":("main_cf",BigtableRepository.NULL_CF)
 }
 
 cf_config={

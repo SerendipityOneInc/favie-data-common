@@ -22,6 +22,7 @@ from favie_data_common.common.pydantic_utils import PydanticUtils
 from concurrent.futures import ThreadPoolExecutor
 
 class BigtableRepository:
+    NULL_CF = "/dev/null"
     def __init__(self,*,
                  bigtable_project_id:str,
                  bigtable_instance_id:str,
@@ -209,8 +210,11 @@ class BigtableRepository:
                     if field_type is not None:
                         if self.cf_migration and field_name in self.cf_migration.keys():
                             old_cf,new_cf = self.cf_migration[field_name]
-                            if column_family == old_cf and field_name not in migration_status:
-                                model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                            if column_family == old_cf:
+                                if new_cf == self.NULL_CF:
+                                    migration_status.add(field_name)
+                                elif field_name not in migration_status:
+                                    model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
                             elif column_family == new_cf:
                                 migration_status.add(field_name)
                                 model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
@@ -225,9 +229,11 @@ class BigtableRepository:
         try:
             if self.cf_migration and fields:
                 row = self.table.row(row_key)
+                delete_fields = {}
                 for field in fields:
                     if field in self.cf_migration.keys():
                         old_cf,new_cf = self.cf_migration[field]
+                        delete_fields.setdefault(old_cf,set()).add(field)
                         row.delete_cell(old_cf,field.encode("utf-8"))
                 row.commit()
         except Exception as e:
