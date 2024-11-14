@@ -1,6 +1,7 @@
+import sys
 import unittest
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils  # 请确保导入正确
 
 class TestModel(BaseModel):
@@ -75,4 +76,11 @@ class TestBigtableRepository(unittest.TestCase):
             BigtableUtils.str_convert_pydantic_field("test", set)
 
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    
+    class Test(BaseModel):
+        name: str
+        age: Optional[float] = None
+
+    test = Test(name="John", age=sys.float_info.max)
+    print(test.model_dump_json(exclude_none=True))
