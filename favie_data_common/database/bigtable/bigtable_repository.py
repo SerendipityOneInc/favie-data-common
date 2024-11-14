@@ -229,11 +229,9 @@ class BigtableRepository:
         try:
             if self.cf_migration and fields:
                 row = self.table.row(row_key)
-                delete_fields = {}
                 for field in fields:
                     if field in self.cf_migration.keys():
                         old_cf,new_cf = self.cf_migration[field]
-                        delete_fields.setdefault(old_cf,set()).add(field)
                         row.delete_cell(old_cf,field.encode("utf-8"))
                 row.commit()
         except Exception as e:
