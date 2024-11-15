@@ -1,7 +1,8 @@
+import json
 import time
 from typing import Optional
 from pydantic import BaseModel
-from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex
+from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex,FieldDeserializer
 from favie_data_common.common.common_utils import CommonUtils
 import google.cloud.bigtable.row_filters as sync_row_filters
 from google.cloud.bigtable import Client
@@ -11,14 +12,28 @@ bigtable_config = {
     "instance_id": "favie-product-merge-db",
 }
 
+class Address(BaseModel):
+    id : Optional[str] = None
+    city : Optional[str] = None
+    street : Optional[str] = None
+    zipcode : Optional[str] = None
+
 class Person(BaseModel):
     id : Optional[str] = None
     name : Optional[str] = None
     age : Optional[int] = None
     city : Optional[str] = None
     sex : Optional[str] = None
-    address : Optional[str] = None
+    address : Optional[Address] = None
     favorite : Optional[str] = None
+    
+class AddressDeserializer(FieldDeserializer):
+    def deserialize(self, value: str) -> Address:
+        try:
+            json_dict = json.loads(value)
+            return Address(**json_dict)
+        except Exception as e:
+            return Address(street=value)
 
 def gen_review_rowkey(person:Person):
     return person.id
@@ -59,7 +74,10 @@ person_repository = BigtableRepository(
     default_cf="main_cf",
     cf_config=cf_config,
     bigtable_index=person_city_index_repository,
-    cf_migration=cf_migeration    
+    cf_migration=cf_migeration,    
+    derializer_config={
+        "address" : AddressDeserializer()
+    }
 )
 
 def test_save():
@@ -68,7 +86,7 @@ def test_save():
             id=f"B0000{i}",
             name=f"Bob{i}",
             sex="male",
-            address=f"address{i}",
+            address=Address(street=f"address{i}"),
             favorite=f"favorite{i}",
             city="hangzhou" if i % 2 == 0 else "beijing"
         )

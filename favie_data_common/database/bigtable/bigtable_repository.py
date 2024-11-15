@@ -20,7 +20,9 @@ from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils
 from favie_data_common.common.common_utils import CommonUtils
 from favie_data_common.common.pydantic_utils import PydanticUtils
 from concurrent.futures import ThreadPoolExecutor
-
+class FieldDeserializer:
+    def deserialize(self,field_value:str):
+        pass
 class BigtableRepository:
     NULL_CF = "/dev/null"
     def __init__(self,*,
@@ -32,7 +34,8 @@ class BigtableRepository:
                  default_cf:str = None,
                  cf_config:dict[str,str]=None,
                  bigtable_index:'BigtableIndexRepository'=None,
-                 cf_migration:dict[str,(str,str)]=None
+                 cf_migration:dict[str,(str,str)]=None,
+                 derializer_config:dict[str,FieldDeserializer]=None
             ):
         '''
             bigtable_project_id: BigTable 项目 ID
@@ -44,6 +47,7 @@ class BigtableRepository:
             default_cf: 默认列族，如果cf_config中没有配置则使用default_cf
             bigtable_index:bigtable二级索引
             cf_migration:列族迁移配置，key为列名，value为（旧列簇,新列簇）元组
+            derializer_config:字段反序列化配置，key为列名，value为FieldDeserializer对象
         '''
         self.bigtable_project_id = bigtable_project_id
         self.bigtable_instance_id = bigtable_instance_id
@@ -57,6 +61,7 @@ class BigtableRepository:
         self.default_cf = default_cf
         self.bigtable_index = bigtable_index
         self.cf_migration = cf_migration
+        self.derializer_config = derializer_config
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.logger = logging.getLogger(__name__)
     
@@ -214,16 +219,20 @@ class BigtableRepository:
                                 if new_cf == self.NULL_CF:
                                     migration_status.add(field_name)
                                 elif field_name not in migration_status:
-                                    model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                                    model_dict[field_name] = self.__derialize_field(field_name,field_value,field_type)
                             elif column_family == new_cf:
                                 migration_status.add(field_name)
-                                model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                                model_dict[field_name] = self.__derialize_field(field_name,field_value,field_type)
                         else:
-                            model_dict[field_name] = BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+                            model_dict[field_name] = self.__derialize_field(field_name,field_value,field_type)
         if migration_status and row_key:
             self.executor.submit(self.__delete_migeration_fields,row_key,migration_status)
         return self.model_class(**model_dict)
     
+    def __derialize_field(self,field_name:str,field_value:str,field_type:type):
+        if self.derializer_config and field_name in self.derializer_config.keys():
+            return self.derializer_config[field_name].deserialize(field_value)
+        return BigtableUtils.str_convert_pydantic_field(field_value, field_type)
     
     def __delete_migeration_fields(self,row_key:str,fields:set[str]):
         try:
