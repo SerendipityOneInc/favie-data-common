@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex,FieldDeserializer
 from favie_data_common.common.common_utils import CommonUtils
@@ -25,7 +25,8 @@ class Person(BaseModel):
     city : Optional[str] = None
     sex : Optional[str] = None
     address : Optional[Address] = None
-    favorite : Optional[str] = None
+    favorite  : Optional[str] = None
+    favorite_dict : Optional[dict[str,List[str]]] = None
     
 class AddressDeserializer(FieldDeserializer):
     def deserialize(self, value: str) -> Address:
@@ -34,6 +35,7 @@ class AddressDeserializer(FieldDeserializer):
             return Address(**json_dict)
         except Exception as e:
             return Address(street=value)
+
 
 def gen_review_rowkey(person:Person):
     return person.id
@@ -88,7 +90,11 @@ def test_save():
             sex="male",
             address=Address(street=f"address{i}"),
             favorite=f"favorite{i}",
-            city="hangzhou" if i % 2 == 0 else "beijing"
+            city="hangzhou" if i % 2 == 0 else "beijing",
+            favorite_dict={
+                "colors":["red","blue","green"],
+                "foods":["apple","banana","orange"]
+            }
         )
         person_repository.save_model(model=person)
 

@@ -18,6 +18,13 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertTrue(PydanticUtils.is_type_of_list(List[str]))
         self.assertFalse(PydanticUtils.is_type_of_list(int))
         self.assertFalse(PydanticUtils.is_type_of_list(str))
+        
+    def test_is_type_of_dict(self):
+        self.assertTrue(PydanticUtils.is_type_of_dict(dict[any,any]))
+        self.assertTrue(PydanticUtils.is_type_of_dict(dict[str, int]))
+        self.assertFalse(PydanticUtils.is_type_of_dict(int))
+        self.assertFalse(PydanticUtils.is_type_of_dict(str))
+        
 
     def test_get_field_type(self):
         self.assertEqual(PydanticUtils.get_field_type(TestModel, "name"), str)

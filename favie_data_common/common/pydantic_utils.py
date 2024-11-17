@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Dict, Optional, Set, Tuple, Union, List
 from typing import List, get_args, get_origin
 from pydantic import BaseModel
 
@@ -12,6 +12,21 @@ class PydanticUtils:
     def is_type_of_list(data_type: type):
         origin_type = get_origin(data_type)
         return origin_type == list or origin_type == List
+    
+    @staticmethod
+    def is_type_of_dict(data_type: type):
+        origin_type = get_origin(data_type)
+        return origin_type == dict or origin_type == Dict
+    
+    @staticmethod
+    def is_type_of_set(data_type: type) -> bool:
+        origin_type = get_origin(data_type)
+        return origin_type == set or origin_type == Set
+
+    @staticmethod
+    def is_type_of_tuple(data_type: type) -> bool:
+        origin_type = get_origin(data_type)
+        return origin_type == tuple or origin_type == Tuple
     
     #获取字段类型
     @staticmethod
