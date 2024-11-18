@@ -26,7 +26,7 @@ class BigtableUtils:
             return '[' + ', '.join(json_strings) + ']'
         elif isinstance(param, tuple):  # 元组类型处理
             json_strings = [BigtableUtils.pydantic_field_convert_str(item, True) for item in param]
-            return '(' + ', '.join(json_strings) + ')'
+            return '[' + ', '.join(json_strings) + ']'
         elif isinstance(param, dict):  # 字典类型处理
             json_pairs = [
                 f'{json.dumps(key)}: {BigtableUtils.pydantic_field_convert_str(value, True)}'

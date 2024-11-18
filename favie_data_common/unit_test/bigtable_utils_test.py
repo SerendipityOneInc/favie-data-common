@@ -41,7 +41,7 @@ class TestBigtableRepository(unittest.TestCase):
 
         # 测试元组 (Tuple)
         test_tuple = (10, "value", 30.5)
-        expected_tuple_json = '(10, "value", 30.5)'
+        expected_tuple_json = '[10, "value", 30.5]'
         self.assertEqual(BigtableUtils.pydantic_field_convert_str(test_tuple), expected_tuple_json)
 
         # 测试嵌套模型
