@@ -1,16 +1,28 @@
 import json
 import time
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, conint
 from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository,BigtableIndexRepository,BigtableIndex,FieldDeserializer
 from favie_data_common.common.common_utils import CommonUtils
-import google.cloud.bigtable.row_filters as sync_row_filters
-from google.cloud.bigtable import Client
+
+from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils
 
 bigtable_config = {
     "project_id": "srpdev-7b1d3",
     "instance_id": "favie-product-merge-db",
 }
+
+class Color(BaseModel):
+    red: conint(ge=0, le=255) = Field(..., description="红色通道值 (0-255)")
+    green: conint(ge=0, le=255) = Field(..., description="绿色通道值 (0-255)")
+    blue: conint(ge=0, le=255) = Field(..., description="蓝色通道值 (0-255)")
+
+    def __str__(self):
+        return f"RGB({self.red}, {self.green}, {self.blue})"
+    
+    def hex_color(self) -> str:
+        """将 RGB 颜色转换为十六进制表示法"""
+        return f"#{self.red:02X}{self.green:02X}{self.blue:02X}"    
 
 class Address(BaseModel):
     id : Optional[str] = None
@@ -24,17 +36,16 @@ class Person(BaseModel):
     age : Optional[int] = None
     city : Optional[str] = None
     sex : Optional[str] = None
-    address : Optional[Address] = None
+    address : Optional[dict[str,Address]] = None
     favorite  : Optional[str] = None
-    favorite_dict : Optional[dict[str,List[str]]] = None
+    favorite_dict : Optional[dict[str,List[Color]]] = None
     
 class AddressDeserializer(FieldDeserializer):
     def deserialize(self, value: str) -> Address:
         try:
-            json_dict = json.loads(value)
-            return Address(**json_dict)
+            return  BigtableUtils.str_convert_pydantic_field(string_data=value, data_type=dict[str,Address])
         except Exception as e:
-            return Address(street=value)
+            return {"address1":BigtableUtils.str_convert_pydantic_field(string_data=value, data_type=Address)}
 
 
 def gen_review_rowkey(person:Person):
@@ -88,12 +99,11 @@ def test_save():
             id=f"B0000{i}",
             name=f"Bob{i}",
             sex="male",
-            address=Address(street=f"address{i}"),
+            address={"home":Address(city="hangzhou",street=f"address{i}")},
             favorite=f"favorite{i}",
             city="hangzhou" if i % 2 == 0 else "beijing",
             favorite_dict={
-                "colors":["red","blue","green"],
-                "foods":["apple","banana","orange"]
+                "colors":[Color(red=0, green=0, blue=0),Color(red=255, green=0, blue=0)],
             }
         )
         person_repository.save_model(model=person)
@@ -122,3 +132,5 @@ if __name__ == "__main__":
     # test_query_by_city()
     test_read_with_cf_migeration()
     time.sleep(10)
+    
+  
