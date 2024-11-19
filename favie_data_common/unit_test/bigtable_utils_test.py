@@ -2,10 +2,10 @@ import sys
 import unittest
 import json
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Set, Tuple
+from typing import List, Optional, Dict, Set, Tuple, Any
 from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils  # 请确保导入正确
 
-# 用于测试的 Pydantic 模型
+# Pydantic 模型
 class TestModel(BaseModel):
     name: str
     age: int
@@ -53,6 +53,11 @@ class TestBigtableRepository(unittest.TestCase):
         dictionary_data = {"key1": 123, "key2": [11, 22], "nested": {"inner_key": "value"}}
         expected_dict_json = '{"key1": 123, "key2": [11, 22], "nested": {"inner_key": "value"}}'
         self.assertEqual(BigtableUtils.pydantic_field_convert_str(dictionary_data), expected_dict_json)
+
+        # 新增 Any 类型测试
+        any_data = {"key1": 123, "key2": [11, 22], "any_field": True}
+        expected_any_json = '{"key1": 123, "key2": [11, 22], "any_field": true}'
+        self.assertEqual(BigtableUtils.pydantic_field_convert_str(any_data), expected_any_json)
 
         # 新增 List[List[BaseModel]] 测试
         list_of_models = [
@@ -132,6 +137,16 @@ class TestBigtableRepository(unittest.TestCase):
         dictionary_data = BigtableUtils.str_convert_pydantic_field(dict_str, dict_type)
         expected_dict = {"key1": 123, "key2": 11, "nested": 10}
         self.assertEqual(dictionary_data, expected_dict)
+
+        # 测试 Any 类型
+        any_data_str = '{"key": "value", "number": 1234, "list_data": [1, 2, 3], "obj_data": {"name": "test"}}'
+        any_data_type = Dict[str, Any]
+        any_data_result = BigtableUtils.str_convert_pydantic_field(any_data_str, any_data_type)
+
+        self.assertEqual(any_data_result["key"], "value")
+        self.assertEqual(any_data_result["number"], 1234)
+        self.assertEqual(any_data_result["list_data"], [1, 2, 3])
+        self.assertEqual(any_data_result["obj_data"]["name"], "test")
 
         # 测试 List[List[BaseModel]] 类型
         list_str = '[ [{"name": "Inner1", "age": 20, "is_active": true, "scores": [89.0]}], [{"name": "Inner2", "age": 25, "is_active": false, "scores": [92.5]}] ]'
