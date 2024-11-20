@@ -55,7 +55,7 @@ class BigtableUtils:
             return string_data.lower() == "true" if isinstance(string_data, str) else bool(string_data)
 
         # 如果类型是Any, 则直接返回原始数据，无需再做类型校验
-        if data_type == Any:
+        if data_type == Any or data_type == any:
             # 如果是字符串，先尝试将其解析为JSON
             try:
                 parsed_data = json.loads(string_data)
