@@ -62,8 +62,16 @@ class BigtableRepository:
         self.bigtable_index = bigtable_index
         self.cf_migration = cf_migration
         self.derializer_config = derializer_config
+        #初始化列族列表
+        self.__init_cf_list()
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.logger = logging.getLogger(__name__)
+        
+    def __init_cf_list(self):
+        cf_set  = set([self.default_cf]) if self.default_cf else set()  # 确保self.default_cf成为集合，即使它是字符串
+        if self.cf_config:
+            cf_set.update(list(self.cf_config.values()))  # 将cf_config的值用list包装来确保其作为整体加入集合，不分拆
+        self.cf_list = list(cf_set)
     
     def save_model(self, * ,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
         """
@@ -268,7 +276,7 @@ class BigtableRepository:
         # 列簇过滤器，支持多个列簇
         families = self.__get_families(fields)
         if CommonUtils.list_len(families)>0:
-            family_filters = [FamilyNameRegexFilter(family) for family in families]
+            family_filters = [FamilyNameRegexFilter(family) for family in families]    
             if CommonUtils.list_len(family_filters) > 1:
                 family_filter_union = RowFilterUnion(filters=family_filters)
                 filters.append(family_filter_union)
@@ -288,9 +296,11 @@ class BigtableRepository:
     #retrieve column families base on the list of fields parameters
     def __get_families(self,fields:list[str]):
         if CommonUtils.list_len(fields) == 0:
-            return None
+            return self.cf_list
+        
         if self.cf_config is None:
-            return None
+            return self.cf_list
+        
         families = set()
         for field in fields:
             if field in self.cf_config.keys():

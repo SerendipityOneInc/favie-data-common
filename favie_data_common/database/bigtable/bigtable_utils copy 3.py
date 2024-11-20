@@ -1,17 +1,14 @@
 import json
-from typing import get_args, Any
+from typing import get_args
 from pydantic import BaseModel
-
 from favie_data_common.common.common_utils import CommonUtils
 from favie_data_common.common.pydantic_utils import PydanticUtils
-
 class BigtableUtils:
     @staticmethod
-    def gen_hash_rowkey(key: str):
-        # 假设 CommonUtils是你项目中的工具类实现了md5哈希方法
+    def gen_hash_rowkey(key:str):
         md5 = CommonUtils.md5_hash(key)
         return f'{md5[0:6]}-{key}'  
-
+    
     @staticmethod
     def pydantic_field_convert_str(param, force_dump_json: bool = False) -> str:
         """
@@ -54,18 +51,9 @@ class BigtableUtils:
         elif data_type == bool:
             return string_data.lower() == "true" if isinstance(string_data, str) else bool(string_data)
 
-        # 如果类型是Any, 则直接返回原始数据，无需再做类型校验
-        if data_type == Any or data_type == any:
-            # 如果是字符串，先尝试将其解析为JSON
-            try:
-                parsed_data = json.loads(string_data)
-                return parsed_data
-            except (json.JSONDecodeError, TypeError):
-                return string_data
-
         # 处理 List 类型
         if PydanticUtils.is_type_of_list(data_type):
-            item_type = get_args(data_type)[0] if get_args(data_type) else Any
+            item_type = get_args(data_type)[0]
             items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             return [
@@ -75,27 +63,27 @@ class BigtableUtils:
 
         # 处理 Set 类型 (Set)
         if PydanticUtils.is_type_of_set(data_type):
-            item_type = get_args(data_type)[0] if get_args(data_type) else Any
+            item_type = get_args(data_type)[0]
             items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             return {BigtableUtils.str_convert_complex_type(item, item_type) for item in items}
 
         # 处理 Tuple 类型 (Tuple)
         if PydanticUtils.is_type_of_tuple(data_type):
-            item_types = get_args(data_type)  # 获取所预期元组结构的每个元素的类型
+            item_types = get_args(data_type)  # 获取元组的每个元素类型
             items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             if len(item_types) != len(items):
                 raise TypeError(f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(items)}")
 
             return tuple(
-                BigtableUtils.str_convert_complex_type(item, item_types[index] if index < len(item_types) else Any)
-                for index, item in enumerate(items)
+                BigtableUtils.str_convert_complex_type(item, item_type)
+                for item, item_type in zip(items, item_types)
             )
 
         # 处理 Dict 类型
         if PydanticUtils.is_type_of_dict(data_type):
-            key_type, value_type = (get_args(data_type) or (Any, Any))  # 如果缺失`Any`作为默认
+            key_type, value_type = get_args(data_type)
             dict_items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             return {
@@ -118,22 +106,6 @@ class BigtableUtils:
         递归检查和转换复杂对象，包括列表、字典、集合、元组等复合结构，确保 Pydantic 模型可以正确处理
         """
 
-        # 如果expected_type是Any，则使用item的动态类型
-        if expected_type == Any:
-            if isinstance(item, dict):
-                return {
-                    BigtableUtils.str_convert_complex_type(k, Any): BigtableUtils.str_convert_complex_type(v, Any)
-                    for k, v in item.items()
-                }
-            elif isinstance(item, list):
-                return [BigtableUtils.str_convert_complex_type(i, Any) for i in item]
-            elif isinstance(item, set):
-                return {BigtableUtils.str_convert_complex_type(i, Any) for i in item}
-            elif isinstance(item, tuple):
-                return tuple(BigtableUtils.str_convert_complex_type(i, Any) for i in item)
-            else:
-                return item
-
         # 处理 Pydantic 模型
         if isinstance(expected_type, type) and issubclass(expected_type, BaseModel):
             if isinstance(item, dict):
@@ -144,7 +116,7 @@ class BigtableUtils:
         # 如果 item 是列表 (list), 继续递归
         if isinstance(item, list):
             if PydanticUtils.is_type_of_list(expected_type):
-                inner_type = get_args(expected_type)[0] if get_args(expected_type) else Any
+                inner_type = get_args(expected_type)[0]
                 return [BigtableUtils.str_convert_complex_type(i, inner_type) for i in item]
             else:
                 raise TypeError(f"Expected list type but got {type(item)} for {expected_type}")
@@ -152,7 +124,7 @@ class BigtableUtils:
         # 如果 item 是集合 (set), 继续递归
         if isinstance(item, set):
             if PydanticUtils.is_type_of_set(expected_type):
-                inner_type = get_args(expected_type)[0] if get_args(expected_type) else Any
+                inner_type = get_args(expected_type)[0]
                 return {BigtableUtils.str_convert_complex_type(i, inner_type) for i in item}
             else:
                 raise TypeError(f"Expected set type but got {type(item)} for {expected_type}")
@@ -160,8 +132,8 @@ class BigtableUtils:
         # 如果 item 是元组 (tuple), 继续递归
         if isinstance(item, tuple):
             if PydanticUtils.is_type_of_tuple(expected_type):
-                item_types = get_args(expected_type) or (Any,) * len(item)
-
+                item_types = get_args(expected_type)
+                
                 if len(item_types) != len(item):
                     raise TypeError(f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(item)}")
 
@@ -175,7 +147,7 @@ class BigtableUtils:
         # 如果 item 是字典 (dict), 继续递归
         if isinstance(item, dict):
             if PydanticUtils.is_type_of_dict(expected_type):
-                key_type, value_type = get_args(expected_type) or (Any, Any)
+                key_type, value_type = get_args(expected_type)
                 return {
                     BigtableUtils.str_convert_complex_type(k, key_type): BigtableUtils.str_convert_complex_type(v, value_type)
                     for k, v in item.items()
@@ -183,5 +155,6 @@ class BigtableUtils:
             else:
                 raise TypeError(f"Expected dict type but got {type(item)} for {expected_type}")
 
-        # 处理基础数据类型 或者 仍然为`expected_type`
+        # 处理基础数据类型
         return BigtableUtils.str_convert_pydantic_field(item, expected_type)
+

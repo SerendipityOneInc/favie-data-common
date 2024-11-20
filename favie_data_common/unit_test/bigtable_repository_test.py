@@ -93,6 +93,18 @@ person_repository = BigtableRepository(
     }
 )
 
+
+person_repository_only_default_cf = BigtableRepository(
+    bigtable_project_id=bigtable_config["project_id"],
+    bigtable_instance_id=bigtable_config["instance_id"],
+    bigtable_table_id="favie_test_table",
+    model_class=Person,
+    gen_rowkey=gen_review_rowkey,
+    default_cf="main_cf",
+    bigtable_index=person_city_index_repository,
+)
+
+
 def test_save():
     for i in range(1,10):
         person = Person(
@@ -125,12 +137,18 @@ def test_read_with_cf_migeration():
     for i in range(1,10):
         person = person_repository.read_model(row_key=f"B0000{i}")
         print(person.model_dump_json(exclude_none=True))
+        
+def test_read_with_only_default_cf():
+    for i in range(1,10):
+        person = person_repository_only_default_cf.read_model(row_key=f"B0000{i}")
+        print(person.model_dump_json(exclude_none=True))
                 
 if __name__ == "__main__":
     test_save()
     # test_scan()
     # test_query_by_city()
     test_read_with_cf_migeration()
+    test_read_with_only_default_cf()
     time.sleep(10)
     
   
