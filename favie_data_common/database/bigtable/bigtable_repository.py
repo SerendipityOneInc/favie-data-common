@@ -1,6 +1,6 @@
 from datetime import datetime,timezone
 import logging
-from typing import Type, Set, Callable,Optional, get_args
+from typing import List, Type, Set, Callable,Optional, get_args
 from pydantic import BaseModel
 from google.cloud import bigtable
 from google.cloud.bigtable.row import DirectRow
@@ -81,7 +81,23 @@ class BigtableRepository:
         """
         self.__save_model(model=model,save_cfs=save_cfs,version=version,exclude_fields=exclude_fields)
         if self.bigtable_index:
-            self.bigtable_index.save_index(model = model,version=version)        
+            self.bigtable_index.save_index(model = model,version=version)  
+            
+    def delete_model(self,*,row_key:str):
+        self.__delete_model(row_key=row_key)
+        
+    def save_models(self, * ,models: List[BaseModel],save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
+        """
+            models : list of pydantic objects need to be saved
+            save_cfs : list of column families need to be saved
+            version : version number of saved data
+        """
+        self.__save_models(models=models,save_cfs=save_cfs,version=version,exclude_fields=exclude_fields)
+        if self.bigtable_index:
+            self.bigtable_index.save_indexes(models=models,version=version)
+            
+    def delete_models(self,*,row_keys:List[str]):
+        self.__delete_models(row_keys=row_keys)
         
     def upsert_model(self,*,model: BaseModel,save_fields:list[str] = None,version:int = None):
         """
@@ -176,6 +192,36 @@ class BigtableRepository:
         return self.__convert_row_to_model(row=row,row_key=row_key)
     
     def __save_model(self, * ,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None) -> None:
+        if not model:
+            return 
+        row = self.__convert_model_to_row(model,save_cfs=save_cfs,version=version,exclude_fields=exclude_fields)
+        row.commit()
+        
+    def __delete_model(self,*,row_key:str):
+        row = self.table.row(row_key)
+        row.delete()
+        row.commit()
+    
+    def __save_models(self, * ,models: List[BaseModel],save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None) -> None:
+        if not models:
+            return
+        batcher = self.table.mutations_batcher()
+        for model in models:
+            row = self.__convert_model_to_row(model,save_cfs=save_cfs,version=version,exclude_fields=exclude_fields)
+            batcher.mutate(row)
+        batcher.flush()
+    
+    def __delete_models(self,*,row_keys:List[str]):
+        if not row_keys:
+            return
+        batcher = self.table.mutations_batcher()
+        for row_key in row_keys:
+            row = self.table.row(row_key)
+            row.delete()
+            batcher.mutate(row)
+        batcher.flush()
+
+    def __convert_model_to_row(self,model: BaseModel,save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
         """
             model : pydantic object need to be saved
             save_cfs : list of column families need to be saved
@@ -189,6 +235,10 @@ class BigtableRepository:
         for field_name, field_value in model.__dict__.items():
             if exclude_fields and field_name in exclude_fields:
                 continue
+            if self.cf_migration and field_name in self.cf_migration.keys():
+                old_cf,new_cf = self.cf_migration[field_name]
+                if new_cf == self.NULL_CF:
+                    continue
             if field_value is None:
                 continue
             column_family = self.cf_config.get(field_name,self.default_cf) if self.cf_config is not None else self.default_cf
@@ -198,8 +248,7 @@ class BigtableRepository:
                     row.set_cell(column_family, field_name, column_value,timestamp=timestamp)
                 else:
                     row.set_cell(column_family, field_name, column_value)
-        row.commit()
-        
+        return row
     
     def __gen_row_set(self,row_keys:list[str]):
         row_set = RowSet()
@@ -340,6 +389,10 @@ class BigtableIndexRepository:
     def save_index(self,*,model:BaseModel,version:int = None):
         index = self.gen_index(model)
         self.index_table.save_model(model=index,exclude_fields=["index_key"])
+        
+    def save_indexes(self,*,models:List[BaseModel],version:int = None):
+        indexes = [self.gen_index(model) for model in models]
+        self.index_table.save_models(models=indexes,exclude_fields=["index_key"])
 
     def scan_index(self,*,index_key:str,version:int=None,filters:list=None,limit:int=None)->list[BaseModel]:
         models = self.index_table.scan_models(rowkey_prefix=index_key,limit=limit,filters=filters)

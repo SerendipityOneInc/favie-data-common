@@ -119,6 +119,23 @@ def test_save():
             }
         )
         person_repository.save_model(model=person)
+        
+def test_batch_save():
+    persons = []
+    for i in range(10,30):
+        persons.append(Person(
+                id=f"B0000{i}",
+                name=f"Bob{i}",
+                sex="male",
+                address={"home":Address(city="hangzhou",street=f"address{i}")},
+                favorite=f"favorite{i}",
+                city="hangzhou" if i % 2 == 0 else "beijing",
+                favorite_dict={
+                    "colors":[Color(red=0, green=0, blue=0),Color(red=255, green=0, blue=0)],
+                }
+            )
+        )
+    person_repository.save_models(models=persons)
 
 
 def test_scan():
@@ -134,21 +151,23 @@ def test_query_by_city():
             print(review.model_dump_json(exclude_none=True))
             
 def test_read_with_cf_migeration():
-    for i in range(1,10):
+    for i in range(1,20):
         person = person_repository.read_model(row_key=f"B0000{i}")
         print(person.model_dump_json(exclude_none=True))
         
 def test_read_with_only_default_cf():
-    for i in range(1,10):
+    for i in range(1,20):
         person = person_repository_only_default_cf.read_model(row_key=f"B0000{i}")
         print(person.model_dump_json(exclude_none=True))
                 
 if __name__ == "__main__":
-    test_save()
+    # test_save()
     # test_scan()
     # test_query_by_city()
-    test_read_with_cf_migeration()
-    test_read_with_only_default_cf()
-    time.sleep(10)
+    # test_read_with_cf_migeration()
+    # test_read_with_only_default_cf()
+    # time.sleep(10)
+    
+    test_batch_save()
     
   
