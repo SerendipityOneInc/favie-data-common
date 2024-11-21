@@ -186,6 +186,15 @@ class BigtableRepository:
             results.append(self.__convert_row_to_model(row))
         return results if CommonUtils.list_len(results) > 0 else None
     
+    def read_by_model(self,*,model: BaseModel,version:int = None,fields:list[str] = None) -> Optional[BaseModel]:
+        """
+            model : pydantic object need to be read
+            version : version number for reading data
+            fields : list of columns to read from data
+        """
+        row_key = self.gen_row_key(model)
+        return self.read_model(row_key=row_key,version=version,fields=fields)
+    
     def read_model(self, *,row_key: str,version:int = None,fields:list[str] = None) -> Optional[BaseModel]:
         """
             row_key : rowkey for data to be read

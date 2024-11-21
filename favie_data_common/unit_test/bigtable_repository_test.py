@@ -168,6 +168,11 @@ def test_delete_model():
         )
         person_repository.delete_model(model=person)
         
+def test_read_by_model():
+    for i in range(1,10):
+        person = person_repository.read_by_model(model=Person(id=f"B0000{i}"))
+        print(person.model_dump_json(exclude_none=True))
+        
 def test_delete_models():
     persons = []
     for i in range(10,30):
@@ -188,7 +193,8 @@ if __name__ == "__main__":
     
     test_save()
     test_batch_save()
-    test_delete_model()
-    test_delete_models()
+    test_read_by_model()
+    # test_delete_model()
+    # test_delete_models()
     
   
