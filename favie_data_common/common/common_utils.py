@@ -1,11 +1,15 @@
 import re
 import hashlib
+from typing import Any, Optional
 from urllib.parse import urlparse
 from datetime import datetime,timezone
 from collections.abc import Sized
 from dateutil import parser
+from pydantic import BaseModel
 import tldextract
 
+class SerializeWrapper(BaseModel):
+    datas:Optional[Any] = None
 class CommonUtils():
     @staticmethod
     def all_none(*args):
@@ -145,7 +149,12 @@ class CommonUtils():
         domain = CommonUtils.get_domain(url)
         return  f'{sub_domain}.{domain}' if sub_domain else domain
     
+    def serialize(datas):
+        list_wrapper = SerializeWrapper(datas=datas)
+        return list_wrapper.model_dump_json(exclude_none=True)[9:-1]    
+    
 if __name__ == "__main__":
     print(CommonUtils.get_full_subdomain("www.shop.lululemon.com:80"))
     print(CommonUtils.get_subdomain("shop.lululemon.com"))
+    print(CommonUtils.serialize([{"shop.lululemon.com":1,"www.shop.lululemon.com":"2"},"hello"]))
 
