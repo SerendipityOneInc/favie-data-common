@@ -83,8 +83,12 @@ class BigtableRepository:
         if self.bigtable_index:
             self.bigtable_index.save_index(model = model,version=version)  
             
-    def delete_model(self,*,row_key:str):
-        self.__delete_model(row_key=row_key)
+    def delete_model(self,*,model: BaseModel):
+        if not model:
+            return None
+        if self.bigtable_index:
+            self.bigtable_index.delete_index(model=model)
+        self.__delete_model(row_key=self.gen_row_key(model))
         
     def save_models(self, * ,models: List[BaseModel],save_cfs:Optional[Set[str]] = None,version:int = None,exclude_fields:list[str]=None):
         """
@@ -96,8 +100,12 @@ class BigtableRepository:
         if self.bigtable_index:
             self.bigtable_index.save_indexes(models=models,version=version)
             
-    def delete_models(self,*,row_keys:List[str]):
-        self.__delete_models(row_keys=row_keys)
+    def delete_models(self,*,models:List[BaseModel]):
+        if not models:
+            return None
+        if self.bigtable_index:
+            self.bigtable_index.delete_indexes(models=models)
+        self.__delete_models(row_keys=[self.gen_row_key(model) for model in models])
         
     def upsert_model(self,*,model: BaseModel,save_fields:list[str] = None,version:int = None):
         """
@@ -390,9 +398,17 @@ class BigtableIndexRepository:
         index = self.gen_index(model)
         self.index_table.save_model(model=index,exclude_fields=["index_key"])
         
+    def delete_index(self,*,model:BaseModel):
+        index = self.gen_index(model)
+        self.index_table.delete_model(model=index)
+        
     def save_indexes(self,*,models:List[BaseModel],version:int = None):
         indexes = [self.gen_index(model) for model in models]
         self.index_table.save_models(models=indexes,exclude_fields=["index_key"])
+        
+    def delete_indexes(self,*,models:List[BaseModel]):
+        indexes = [self.gen_index(model) for model in models]
+        self.index_table.delete_models(models=indexes)
 
     def scan_index(self,*,index_key:str,version:int=None,filters:list=None,limit:int=None)->list[BaseModel]:
         models = self.index_table.scan_models(rowkey_prefix=index_key,limit=limit,filters=filters)
