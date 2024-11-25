@@ -96,4 +96,6 @@ class FavieConfigServier:
         停止后台线程
         """
         self._stop_event.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join()
         self.logger.info("Background thread stopped.")
