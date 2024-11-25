@@ -24,7 +24,8 @@ class FavieConfigServier:
         self.configs:dict[str,FavieConfig] = {}
         self._stop_event = threading.Event()  # 线程退出信号
         self.listeners:dict[str,list[FavieConfigListener]] = {}
-
+        self._start_lock = threading.Lock()  # 用于保护 start 的线程锁
+        self._thread = None
         # 初始化日志记录器
         self.logger = logging.getLogger(__name__)
         
@@ -34,7 +35,11 @@ class FavieConfigServier:
         """
         打开配置管理器
         """
-        self.__start_background_thread()
+        with self._start_lock:  # 加线程锁，避免多次启动
+            if self._thread and self._thread.is_alive():
+                self.logger.warning("Configuration manager is already running. Skip starting.")
+                return
+            self.__start_background_thread()
         
     def register_listener(self,config_group:str,listener:FavieConfigListener):
         if not self.listeners.get(config_group):

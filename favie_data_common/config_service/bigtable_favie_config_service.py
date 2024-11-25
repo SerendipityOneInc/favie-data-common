@@ -4,7 +4,7 @@ from datetime import datetime
 
 class BigtableFavieConfigService(FavieConfigServier):
     default_cf = "config_cf"
-    def __init__(self,*, project_id,instance_id,config_table_id,timeout_sec):
+    def __init__(self,*, project_id,instance_id,config_table_id,timeout_sec=60):
         super().__init__(timeout_sec)
         self.config_table_repository:BigtableRepository = BigtableRepository(
             bigtable_project_id=project_id,
