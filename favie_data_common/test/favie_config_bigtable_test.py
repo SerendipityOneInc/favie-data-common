@@ -57,7 +57,7 @@ if upload_result:
 
 test_config_listener = TestConfigListener()
 favie_config_service.register_listener(test_config_listener)
-favie_config_service.open()    
+favie_config_service.start()    
 
 for i in range(10):
     config = test_config_listener.get_config()

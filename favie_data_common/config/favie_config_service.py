@@ -28,7 +28,7 @@ class FavieConfigServier:
         
         # 启动定时更新线程
         
-    def open(self):
+    def start(self):
         """
         打开配置管理器
         """
