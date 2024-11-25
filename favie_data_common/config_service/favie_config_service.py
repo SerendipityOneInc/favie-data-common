@@ -1,3 +1,4 @@
+from collections import defaultdict
 import time
 import threading
 import logging
@@ -5,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 class FavieConfig(BaseModel):
+    config_group:Optional[str] = None
     config_value:Optional[str] = None
     config_version:Optional[str] = None
     
@@ -19,9 +21,9 @@ class FavieConfigServier:
         :param timeout_sec: 定时更新配置的时间间隔（秒）
         """
         self.timeout_sec = timeout_sec
-        self.config:FavieConfig = None
+        self.configs:dict[str,FavieConfig] = {}
         self._stop_event = threading.Event()  # 线程退出信号
-        self.listener:list[FavieConfigListener] = []
+        self.listeners:dict[str,list[FavieConfigListener]] = {}
 
         # 初始化日志记录器
         self.logger = logging.getLogger(__name__)
@@ -34,22 +36,24 @@ class FavieConfigServier:
         """
         self.__start_background_thread()
         
-    def register_listener(self,listener:FavieConfigListener):
-        self.listener.append(listener)
+    def register_listener(self,config_group:str,listener:FavieConfigListener):
+        if not self.listeners.get(config_group):
+            self.listeners[config_group] = []
+        self.listeners[config_group].append(listener)
 
-    def get_config(self) -> FavieConfig:
+    def get_config(self,config_group) -> FavieConfig:
         """
         获取指定名称的配置项，没有时返回默认值
         :param config_name: 配置项名称
         :param default_value: 默认值
         :return: 配置项值
         """
-        return self.config
+        return self.configs.get(config_group)
     
-    def _is_config_updated(self) -> bool:
+    def _is_config_updated(self,config_group:str) -> bool:
         pass
 
-    def _load_config(self)->FavieConfig:
+    def _load_config(self,config_group:str)->FavieConfig:
         pass
 
     def __start_background_thread(self):
@@ -59,15 +63,16 @@ class FavieConfigServier:
         def run():
             while not self._stop_event.is_set():
                 try:
-                    if self._is_config_updated():
-                        config = self._load_config()
-                        if config:
-                            self.config = config
-                            for listener in self.listener:
-                                listener.on_config_updated(config)
-                            self.logger.info(f"Configuration updated : {config.model_dump_json()}")              
-                    else:
-                        self.logger.info("Configs are not update,do not need to update.")
+                    for config_group in self.listeners.keys():
+                        if self._is_config_updated(config_group):
+                            config = self._load_config(config_group)
+                            if config:
+                                self.configs[config_group] = config
+                                for listener in self.listeners.get(config_group):
+                                    listener.on_config_updated(config)
+                                self.logger.info(f"Configuration updated : {config.model_dump_json()}")              
+                        else:
+                            self.logger.info("Configs are not update,do not need to update.")
                 except Exception as e:
                     self.logger.exception("Failed to update configuration. %s", e)
                     

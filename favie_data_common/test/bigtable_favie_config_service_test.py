@@ -5,10 +5,8 @@ from typing import Any, Dict, Optional
 from config.global_config_dev import bigtable_config
 from pydantic import BaseModel
 
-from favie_data_common.config.bigtable_favie_config_service import BigtableFavieConfigService
-from favie_data_common.config.favie_config_service import FavieConfig, FavieConfigListener
-
-
+from favie_data_common.config_service.bigtable_favie_config_service import BigtableFavieConfigService
+from favie_data_common.config_service.favie_config_service import FavieConfig, FavieConfigListener
 
 class TestConfig(BaseModel):
     value:Optional[Dict[str,Any]] = None
@@ -38,8 +36,7 @@ logging.basicConfig(
 favie_config_service = BigtableFavieConfigService(
     project_id=bigtable_config["project_id"],
     instance_id=bigtable_config["instance_id"],
-    config_table_id="favie_config_test",
-    config_group="favie_config_test",
+    config_table_id="favie_config_table",
     timeout_sec=10
 )
 
@@ -51,21 +48,25 @@ test_config = TestConfig(value={
     }
 )
 
-upload_result = favie_config_service.upload_config(test_config.model_dump_json())
+config_group = "favie_config_test"
+
+upload_result = favie_config_service.upload_config(config_group,test_config.model_dump_json())
 if upload_result:
     print("upload success")
 
 test_config_listener = TestConfigListener()
-favie_config_service.register_listener(test_config_listener)
+favie_config_service.register_listener(config_group,test_config_listener)
 favie_config_service.start()    
 
 for i in range(10):
     config = test_config_listener.get_config()
     if config:
         print(f"config = {config.model_dump_json()}")
+    else:
+        print("config is None")
     if i == 5:
         test_config.value["field5"] = "expression5"
-        upload_result = favie_config_service.upload_config(test_config.model_dump_json())
+        upload_result = favie_config_service.upload_config(config_group,test_config.model_dump_json())
     time.sleep(3)
     
 favie_config_service.stop()
