@@ -77,7 +77,7 @@ class FavieConfigServier:
                                     listener.on_config_updated(config)
                                 self.logger.info(f"Configuration updated : {config.model_dump_json()}")              
                         else:
-                            self.logger.info("Configs are not update,do not need to update.")
+                            self.logger.debug("Configs are not update,do not need to update.")
                 except Exception as e:
                     self.logger.exception("Failed to update configuration. %s", e)
                     
