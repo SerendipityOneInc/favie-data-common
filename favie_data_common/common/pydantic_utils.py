@@ -1,11 +1,7 @@
 from typing import Dict, Optional, Set, Tuple, Union, List
 from typing import List, get_args, get_origin
 from pydantic import BaseModel
-
 from favie_data_common.common.common_utils import CommonUtils
-
-class ListWrapper(BaseModel):
-    datas:Optional[List] = None
 
 class PydanticUtils:    
     @staticmethod
@@ -74,8 +70,3 @@ class PydanticUtils:
                         setattr(dest_obj, field_name, source_value)
         
         return dest_obj
-    
-        
-    def serialize_list(datas:List[BaseModel]):
-        list_wrapper = ListWrapper(datas=datas)
-        return list_wrapper.model_dump_json(exclude_none=True)[9:-1]

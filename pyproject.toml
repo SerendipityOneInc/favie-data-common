@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "favie-data-common"
-version = "v0.0.7"
+version = "v0.0.8"
 description = ""
 authors = ["winston <winston@srp.one>"]
 readme = "README.md"
@@ -13,6 +13,7 @@ google-cloud-bigtable = "2.26.0"
 tldextract = "5.1.2"
 pydantic = "2.6.4"
 pydantic-settings = "2.2.1"
+business-rules="1.1.1"
 
 [build-system]
 requires = ["poetry-core"]
