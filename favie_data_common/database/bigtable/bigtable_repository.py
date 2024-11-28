@@ -1,6 +1,6 @@
 from datetime import datetime,timezone
 import logging
-from typing import List, Type, Set, Callable,Optional, get_args
+from typing import List, Type, Set, Callable,Optional
 from pydantic import BaseModel
 from google.cloud import bigtable
 from google.cloud.bigtable.row import DirectRow
@@ -422,6 +422,10 @@ class BigtableIndexRepository:
     def scan_index(self,*,index_key:str,version:int=None,filters:list=None,limit:int=None)->list[BaseModel]:
         models = self.index_table.scan_models(rowkey_prefix=index_key,limit=limit,filters=filters)
         return models
+    
+    def close(self):
+        if self.index_table:
+            self.index_table.close()
         
     def __gen_rowkey(self,model:BigtableIndex):
         return f'{model.index_key}#{model.rowkey}'
