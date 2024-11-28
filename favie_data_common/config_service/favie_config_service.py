@@ -14,7 +14,7 @@ class FavieConfigListener:
     def on_config_updated(self,config:FavieConfig):
         pass
     
-class FavieConfigServier:
+class FavieConfigService:
     def __init__(self, timeout_sec: int=60):
         """
         初始化配置管理类

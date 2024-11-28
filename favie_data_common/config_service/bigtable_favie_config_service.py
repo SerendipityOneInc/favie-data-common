@@ -1,8 +1,8 @@
-from favie_data_common.config_service.favie_config_service import FavieConfig, FavieConfigServier
+from favie_data_common.config_service.favie_config_service import FavieConfig, FavieConfigService
 from favie_data_common.database.bigtable.bigtable_repository import BigtableRepository
 from datetime import datetime
 
-class BigtableFavieConfigService(FavieConfigServier):
+class BigtableFavieConfigService(FavieConfigService):
     default_cf = "config_cf"
     def __init__(self,*, project_id,instance_id,config_table_id,timeout_sec=60):
         super().__init__(timeout_sec)
@@ -36,7 +36,7 @@ class BigtableFavieConfigService(FavieConfigServier):
     
     def upload_config(self,config_group:str,config_value:str):
         try:
-            if not config_value:
+            if not config_value or not config_group:
                 return False
             self.config_table_repository.save_model(
                 model=FavieConfig(
