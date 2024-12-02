@@ -24,6 +24,33 @@ class PydanticUtils:
         origin_type = get_origin(data_type)
         return origin_type == tuple or origin_type == Tuple
     
+    @staticmethod
+    def is_type_of_pydantic_class(data_type: type) -> bool:
+        try:
+            if data_type is None:
+                return False
+            return issubclass(data_type, BaseModel)
+        except TypeError:
+            return False
+    
+    @staticmethod
+    def get_fields_of_pydantic_class(data_type: type) -> List[str]:
+        if not PydanticUtils.is_type_of_pydantic_class(data_type):
+            return []
+        for field_name, field_type in data_type.model_fields.items():
+            print(field_name, field_type)
+        return [(field_name,field_type.annotation) for field_name,field_type in data_type.model_fields.items()]
+        
+    @staticmethod
+    def get_list_item_type(field_type):
+        # 确认 field_type 是一个泛型类型并且起源是 list
+        if get_origin(field_type) in (list, List):
+            # 获取参数类型 (即 list 的 item 类型)
+            item_types = get_args(field_type)
+            if item_types:
+                return item_types[0]  # 通常 List 会仅有一个参数
+        return None
+    
     #获取字段类型
     @staticmethod
     def get_field_type(model: BaseModel, field_name: str):

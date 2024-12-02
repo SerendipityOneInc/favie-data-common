@@ -1,12 +1,22 @@
-from typing import Type, Optional
+from typing import Dict, List, Type, Optional,Any, Union, get_type_hints
 from business_rules.variables import (
     BaseVariables,
     numeric_rule_variable,
     string_rule_variable,
     boolean_rule_variable,
+    select_rule_variable
+)
+from business_rules.operators import (
+    BaseType,
+    NumericType,
+    StringType,
+    BooleanType,
+    SelectType,
+    SelectMultipleType
 )
 from pydantic import BaseModel
 from business_rules.fields import FIELD_TEXT
+from favie_data_common.common.pydantic_utils import PydanticUtils
 from favie_data_common.rule_engine.operators.matches_cached_regex import matches_cached_regex
 from favie_data_common.rule_engine.operators.operator_utils import register_operator_to_string_type
 
@@ -51,129 +61,232 @@ register_operator_to_string_type(
     label="Matches Cached Regex"
 )
 
+
+def favie_select_rule_variable(label=None, options=None):
+    def decorator(func):
+        # 使用第三方的 select_rule_variable 装饰器
+        wrapped_func = select_rule_variable(label, options)(func)
+        # 这里可以加入自己的自定义逻辑，扩展原始装饰器的行为
+        # 例如，增加调试信息或调整一些属性
+
+        return wrapped_func
+    
+    if callable(label):
+        # 如果是无参数调用
+        return decorator(label)
+
+    return decorator
+
 class VariablesFactory:
     """
-    动态生成规则变量和差异字段规则变量的静态工具类
+    动态生成规则变量的工具类，支持普通字段、差异字段、嵌套字段、列表字段，以及动态计算字段（@property）。
     """
     @staticmethod
     def build_variables(pydantic_model: Type[BaseModel]):
-        """
-        动态生成字段规则变量类，并可选支持字段差异的差异字段变量
-        :param pydantic_model: Pydantic 模型类型
-        :return: 动态生成的规则变量类（支持 diff）
-        """
-
-        # 动态生成的规则变量类
         class DynamicVariables(BaseVariables):
             def __init__(self, new_obj: BaseModel, base_obj: Optional[BaseModel] = None):
-                """
-                初始化动态规则变量类
-                :param new_obj: 新对象（BaseModel 实例）
-                :param base_obj: 基准对象（可选，BaseModel 实例）
-                """
-                # 确保输入的对象与 pydantic_model 类型一致
                 if not isinstance(new_obj, pydantic_model):
-                    raise ValueError("`new_obj` must be an instance of the provided Pydantic model.")
-                if base_obj and not isinstance(base_obj, pydantic_model):
-                    raise ValueError("`base_obj` must be an instance of the provided Pydantic model.")
-                
-                # 存储新对象和基准对象
+                    raise ValueError(f"`new_obj` 必须是 {pydantic_model} 的实例。")
                 self.new_instance = new_obj
                 self.base_instance = base_obj
-
-            # 动态装配每个字段的差异规则变量
-            @classmethod
-            def create_diff_field(cls, field_name, field_type):
-                """
-                创建一个动态差异规则变量方法，用于规则引擎调用
-                """
-                @numeric_rule_variable
-                def diff_field(self):
-                    # 如果基准对象不存在，则返回 None
-                    if not self.base_instance:
-                        return 0
-                    
-                    # 获取字段的旧值和新值
-                    old_val = getattr(self.base_instance, field_name, None)
-                    new_val = getattr(self.new_instance, field_name, None)
-                    
-                    if old_val is None or new_val is None:
-                        return 0 
-
-                    # 根据字段类型计算差异值
-                    if field_type in [int, float]:
-                        return new_val - old_val 
-                    elif field_type == str:
-                        # 对字符串计算长度差异
-                        return len(new_val) - len(old_val) if isinstance(old_val, str) and isinstance(new_val, str) else 0
-                    elif field_type in [list, set, dict, tuple]:
-                        # 集合或序列类型计算长度差
-                        return len(new_val) - len(old_val) 
-                    elif field_type == bool:
-                        # 布尔值转换为 0 和 1 进行差值运算
-                        return int(new_val) - int(old_val) 
-                    else:
-                        # 默认其他类型返回 None，表示无法计算差异
-                        return 0
                 
-                # 动态绑定差异方法到类
-                setattr(cls, f"{field_name}_diff", diff_field)
+            def select_rule_variable(label=None, options=None):
+                if callable(label):
+                    # 如果直接传入方法作为参数，可能是无参数装饰器的应用方式
+                    return rule_variable(SelectType)(label)
+                return rule_variable(SelectType, label=label, options=options)
+            
+            def select_multiple_rule_variable(label=None, options=None):
+                if callable(label):
+                    # 如果直接传入方法作为参数，可能是无参数装饰器的应用方式
+                    return rule_variable(SelectMultipleType)(label)
+                return rule_variable(SelectMultipleType, label=label, options=options)
+                            
+        def get_rule_variable(field_type: Any):
+            """
+            根据字段类型返回对应的规则变量装饰器。
+            支持数字 (int, float)、字符串 (str)、布尔值 (bool)、以及 Optional 类型。
+            不支持的类型直接返回 None。
+            """
+            # 处理 Optional[X] 类型 (Union[X, None])
+            native_file_type = PydanticUtils.get_native_type(field_type)
 
-        # 遍历所有字段，并为每个字段添加差异字段规则变量
-        for field_name, field in pydantic_model.model_fields.items():
-            field_type = field.annotation
-            # 为字段生成差异变量
-            DynamicVariables.create_diff_field(field_name, field_type)
+            # 处理基础类型
+            if native_file_type in [int, float]:
+                return numeric_rule_variable
+            elif native_file_type == str:
+                return string_rule_variable
+            elif native_file_type == bool:
+                return boolean_rule_variable
 
-        # 定义普通字段规则变量
-        attributes = {}
+            # 默认：不支持的字段类型
+            return None
 
-        # 遍历 Pydantic 模型字段，动态生成普通规则变量
-        for field_name, field in pydantic_model.model_fields.items():
-            field_type = field.annotation
 
-            # 数字类型规则变量
-            if field_type in [int, float]:
-                @numeric_rule_variable
-                def getter(self, field_name=field_name):
-                    return getattr(self.new_instance, field_name)
-                attributes[field_name] = getter
+        def bind_field_as_rule_variable(field_name: str, field_type: Any):
+            """绑定普通字段规则变量."""
+            rule_variable = get_rule_variable(field_type)
+            if not rule_variable:
+                return None
+            
+            @rule_variable
+            def getter(self:DynamicVariables, field_name=field_name) -> field_type:
+                return getattr(self.new_instance, field_name)
+            setattr(DynamicVariables, field_name, getter)
 
-            # 字符串类型规则变量
-            elif field_type == str:
-                @string_rule_variable
-                def getter(self, field_name=field_name):
-                    return getattr(self.new_instance, field_name)
-                attributes[field_name] = getter
+        def bind_property_as_rule_variable(property_name: str, property_type: Any):
+            """为 @property 动态生成规则变量."""
+            rule_variable = get_rule_variable(property_type)
+            if not rule_variable:
+                return None
+            
+            @rule_variable
+            def property_getter(self:DynamicVariables, property_name=property_name) -> property_type:
+                value = getattr(self.new_instance, property_name, None)
+                return value if value is not None else (0 if property_type in [int, float] else "")
+            setattr(DynamicVariables, property_name, property_getter)
 
-            # 布尔类型规则变量
-            elif field_type == bool:
-                @boolean_rule_variable
-                def getter(self, field_name=field_name):
-                    return getattr(self.new_instance, field_name)
-                attributes[field_name] = getter
+        def bind_field_diff_as_rule_variable(field_name: str, field_type: Any):
+            """绑定差异字段规则变量。"""
+            # 解包 Optional 类型
+            if hasattr(field_type, "__origin__") and field_type.__origin__ is Union:
+                field_type_args = field_type.__args__
+                if len(field_type_args) == 2 and type(None) in field_type_args:
+                    field_type = field_type_args[0]  # 取出实际类型
 
-            # 其他字段规则变量（按字符串处理）
-            else:
-                @string_rule_variable
-                def getter(self, field_name=field_name):
-                    return getattr(self.new_instance, field_name)
-                attributes[field_name] = getter
+            # 仅为支持的基础类型生成差异规则
+            if field_type not in [int, float, str]:
+                return None
 
-        # 处理动态属性 (如 Pydantic 的 @property)
-        for attr_name in dir(pydantic_model):
-            if not attr_name.startswith("_"):  # 排除特殊或私有属性
-                attr = getattr(pydantic_model, attr_name)
+            @numeric_rule_variable
+            def diff_field(self:DynamicVariables):
+                if not pydantic_model:
+                    return 0
+                base_value = getattr(self.base_instance, field_name, None)
+                new_value = getattr(self.new_instance, field_name, None)
 
-                # 判断属性是否为 `property`
-                if isinstance(attr, property):
-                    @numeric_rule_variable
-                    def dynamic_getter(self, attr_name=attr_name):
-                        return getattr(self.new_instance, attr_name)
-                    attributes[attr_name] = dynamic_getter
+                # 差异计算
+                if field_type in [int, float]:
+                    return (new_value or 0) - (base_value or 0)
+                if field_type == str:
+                    return len(new_value or "") - len(base_value or "")
+                return 0
 
-        # 将规则变量绑定到 DynamicVariables 类
-        for field, getter_method in attributes.items():
-            setattr(DynamicVariables, field, getter_method)
+            setattr(DynamicVariables, f"{field_name}_diff", diff_field)
+
+
+        def bind_pydantic_field(field_name: str, field_type: Type[BaseModel]):
+            """
+            仅处理 Pydantic 类型对象，生成形式为 fieldB_xxx 的变量。
+            """
+            if not PydanticUtils.is_type_of_pydantic_class(field_type):
+                return None
+            
+            # 生成所有属性为基础类型的规则变量
+            for sub_field_name, sub_field_type in PydanticUtils.get_fields_of_pydantic_class(field_type):
+                variable_name = f"{field_name}_{sub_field_name}"
+                if sub_field_type in [int, float, str, bool]:
+                    rule_variable = get_rule_variable(sub_field_type)
+                    if not rule_variable:
+                        continue
+
+                    print(f"Sub field: {sub_field_name} | Variable name: {variable_name}")
+                    
+                    #通过闭包生成getter，因为闭包是在循环中，需要使用默认参数，不然会出现变量名重复的问题
+                    def make_getter(variable_name, sub_field_name):
+                        @rule_variable
+                        def nested_getter(self: DynamicVariables):
+                            nested_obj = getattr(self.new_instance, field_name, None)
+                            if nested_obj:
+                                sub_value = getattr(nested_obj, sub_field_name, None)
+                                return sub_value
+                            return None
+                        return nested_getter                 
+                    setattr(DynamicVariables, variable_name, make_getter(variable_name, sub_field_name))
+                if PydanticUtils.is_type_of_list(sub_field_type):
+                    @favie_select_rule_variable  # 用于规则引擎集合操作
+                    def list_getter(self:DynamicVariables)->list:
+                        nested_list = getattr(self.new_instance, field_name, [])
+                        result = []
+                        for nested_item in nested_list:
+                            if isinstance(nested_item, BaseModel):
+                                result.append(nested_item.model_dump())  # Pydantic v2
+                            else:
+                                result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
+                        return result
+                    list_getter.field_type = SelectType
+                    setattr(DynamicVariables, variable_name, list_getter)
+
+        def bind_list_field(field_name: str, field_type: Any):
+            """
+            动态绑定列表字段（List[BaseModel] 类型）。
+            此方法针对 `List[BaseModel]`，允许规则引擎对列表字段进行集合操作（如 contains）。
+            """
+            # 检查是否为 List
+            if not PydanticUtils.is_type_of_list(field_type):
+                return None
+            
+            @favie_select_rule_variable  # 用于规则引擎集合操作
+            def list_getter(self:DynamicVariables)->list:# -> list:
+                nested_list = getattr(self.new_instance, field_name, [])
+                result = []
+                for nested_item in nested_list:
+                    if isinstance(nested_item, BaseModel):
+                        result.append(nested_item.model_dump())  # Pydantic v2
+                    else:
+                        result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
+                return result
+            list_getter.field_type = SelectType
+            setattr(DynamicVariables, field_name, list_getter)
+            
+        def bind_list_field_by_subfield(field_name: str, field_type: Any):
+            if not PydanticUtils.is_type_of_list(field_type):
+                return None
+            
+            item_type = PydanticUtils.get_list_item_type(field_type)         
+            if not PydanticUtils.is_type_of_pydantic_class(item_type):
+                return None
+            
+            for sub_field_name, _ in PydanticUtils.get_fields_of_pydantic_class(item_type):
+                def mark_list_field_getter(field_name, sub_field_name):
+                    @favie_select_rule_variable  # 用于规则引擎集合操作
+                    def list_field_getter(self:DynamicVariables)->list:# -> list:
+                        nested_list = getattr(self.new_instance, field_name, [])
+                        result = []
+                        for nested_item in nested_list:
+                            value = getattr(nested_item,sub_field_name)
+                            if value:
+                                result.append(value)                   
+                        return result
+                    list_field_getter.field_type = SelectType
+                    return list_field_getter
+                setattr(DynamicVariables, f"{field_name}_{sub_field_name}" ,mark_list_field_getter(field_name, sub_field_name))           
+
+        # Step 1: 注册普通字段规则变量（只处理普通字段，不包括 @property）
+        for field_name, field_info in pydantic_model.model_fields.items():
+            field_type = PydanticUtils.get_field_type(pydantic_model, field_name)
+            bind_field_as_rule_variable(field_name, field_type)
+            bind_pydantic_field(field_name, field_type)
+            bind_list_field(field_name, field_type)
+            bind_list_field_by_subfield(field_name, field_type)
+
+        # Step 2: 注册 @property 字段规则变量
+        for property_name in dir(pydantic_model):
+            prop = getattr(pydantic_model, property_name)  # 获取属性
+            if isinstance(prop, property):  # 如果是 @property
+                # 直接从 fget 的返回值获取类型注解
+                property_type = get_type_hints(prop.fget).get("return", None)
+                if property_type:
+                    bind_property_as_rule_variable(property_name, property_type)
+
+        # Step 3: 注册差异规则变量（包括普通字段和 @property）
+        for rule_variable_name in dir(DynamicVariables):
+            if not rule_variable_name.startswith("_"):  # 忽略内置字段
+                rule_variable = getattr(DynamicVariables, rule_variable_name, None)
+                if callable(rule_variable):
+                    # 获取规则变量的返回类型，并生成差异规则
+                    rule_variable_type = get_type_hints(rule_variable).get("return", None)
+                    if rule_variable_type:
+                        bind_field_diff_as_rule_variable(rule_variable_name, rule_variable_type)
 
         return DynamicVariables
