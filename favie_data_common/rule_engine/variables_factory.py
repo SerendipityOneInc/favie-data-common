@@ -128,9 +128,11 @@ class VariablesFactory:
             if not rule_variable:
                 return None
             
+            
             @rule_variable
             def getter(self:DynamicVariables, field_name=field_name) -> field_type:
-                return getattr(self.new_instance, field_name)
+                if self.new_instance:
+                    return getattr(self.new_instance, field_name)
             setattr(DynamicVariables, field_name, getter)
 
         def bind_property_as_rule_variable(property_name: str, property_type: Any):
@@ -141,22 +143,15 @@ class VariablesFactory:
             
             @rule_variable
             def property_getter(self:DynamicVariables, property_name=property_name) -> property_type:
-                value = getattr(self.new_instance, property_name, None)
-                return value if value is not None else (0 if property_type in [int, float] else "")
+                if self.new_instance:
+                    value = getattr(self.new_instance, property_name, None)
+                    return value if value is not None else (0 if property_type in [int, float] else "")
             setattr(DynamicVariables, property_name, property_getter)
 
         def bind_field_diff_as_rule_variable(field_name: str, field_type: Any):
             """绑定差异字段规则变量。"""
-            # 解包 Optional 类型
-            if hasattr(field_type, "__origin__") and field_type.__origin__ is Union:
-                field_type_args = field_type.__args__
-                if len(field_type_args) == 2 and type(None) in field_type_args:
-                    field_type = field_type_args[0]  # 取出实际类型
-
-            # 仅为支持的基础类型生成差异规则
-            if field_type not in [int, float, str,list,List]:
-                return None
-
+            native_faile_type = PydanticUtils.get_native_type(field_type)
+            
             @numeric_rule_variable
             def diff_field(self: DynamicVariables):
                 if not pydantic_model:
@@ -165,33 +160,33 @@ class VariablesFactory:
                 new_value = getattr(self.new_instance, field_name, None)
 
                 # 差异计算
-                if field_type in [int, float]:
+                if native_faile_type in [int, float]:
                     return (new_value or 0) - (base_value or 0)
-                if field_type == str:
+                if native_faile_type == str:
                     return len(new_value or "") - len(base_value or "")
-                if field_type == list or field_type == List:
+                if native_faile_type == list or native_faile_type == List:
                     if not base_value:
                         return len(new_value or [])
                     if not new_value:
                         return -len(base_value)
                     return len(new_value) - len(base_value)
-                if field_type == set or field_type == Set:
+                if native_faile_type == set or native_faile_type == Set:
                     base_set = base_value or set()
                     new_set = new_value or set()
                     # 计算集合的差异个数
                     return len(new_set - base_set)
-                if field_type == dict or field_type == Dict:
+                if native_faile_type == dict or native_faile_type == Dict:
                     base_dict = base_value or {}
                     new_dict = new_value or {}
                     # 可以计算键的差异个数
                     return len(set(new_dict.keys())) - len(set(base_dict.keys()))
-                if field_type == tuple or field_type == Tuple:
+                if native_faile_type == tuple or native_faile_type == Tuple:
                     if not base_value:
                         return len(new_value or ())
                     if not new_value:
                         return -len(base_value)
                     return len(new_value) - len(base_value)
-
+                
                 return 0
 
 
@@ -229,11 +224,14 @@ class VariablesFactory:
                     def list_getter(self:DynamicVariables)->list:
                         nested_list = getattr(self.new_instance, field_name, [])
                         result = []
+                        if not nested_list:
+                            return result
                         for nested_item in nested_list:
-                            if isinstance(nested_item, BaseModel):
-                                result.append(nested_item.model_dump())  # Pydantic v2
-                            else:
-                                result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
+                            if nested_item:
+                                if isinstance(nested_item, BaseModel):
+                                    result.append(nested_item.model_dump())  # Pydantic v2
+                                else:
+                                    result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
                         return result
                     list_getter.field_type = SelectType
                     setattr(DynamicVariables, variable_name, list_getter)
@@ -251,11 +249,14 @@ class VariablesFactory:
             def list_getter(self:DynamicVariables)->list:# -> list:
                 nested_list = getattr(self.new_instance, field_name, [])
                 result = []
+                if not nested_list:
+                    return result
                 for nested_item in nested_list:
-                    if isinstance(nested_item, BaseModel):
-                        result.append(nested_item.model_dump())  # Pydantic v2
-                    else:
-                        result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
+                    if nested_item:
+                        if isinstance(nested_item, BaseModel):
+                            result.append(nested_item.model_dump())  # Pydantic v2
+                        else:
+                            result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
                 return result
             list_getter.field_type = SelectType
             setattr(DynamicVariables, field_name, list_getter)
@@ -274,10 +275,13 @@ class VariablesFactory:
                     def list_field_getter(self:DynamicVariables)->list:# -> list:
                         nested_list = getattr(self.new_instance, field_name, [])
                         result = []
+                        if not nested_list:
+                            return result
                         for nested_item in nested_list:
-                            value = getattr(nested_item,sub_field_name)
-                            if value:
-                                result.append(value)                   
+                            if nested_item:
+                                value = getattr(nested_item,sub_field_name)
+                                if value:
+                                    result.append(value)                   
                         return result
                     list_field_getter.field_type = SelectType
                     return list_field_getter
@@ -285,7 +289,7 @@ class VariablesFactory:
 
         # Step 1: 注册普通字段规则变量（只处理普通字段，不包括 @property）
         for field_name, field_info in pydantic_model.model_fields.items():
-            field_type = PydanticUtils.get_field_type(pydantic_model, field_name)
+            field_type = PydanticUtils.get_native_field_type(pydantic_model, field_name)
             bind_field_as_rule_variable(field_name, field_type)
             bind_pydantic_field(field_name, field_type)
             bind_list_field(field_name, field_type)

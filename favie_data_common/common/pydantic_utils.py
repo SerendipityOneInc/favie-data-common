@@ -51,7 +51,7 @@ class PydanticUtils:
     
     #获取字段类型
     @staticmethod
-    def get_field_type(model: BaseModel, field_name: str):
+    def get_native_field_type(model: BaseModel, field_name: str):
         type = model.model_fields.get(field_name)
         native_type = PydanticUtils.get_native_type(type.annotation if type else None)
         return native_type

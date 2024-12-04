@@ -284,7 +284,7 @@ class BigtableRepository:
                     cell_value = cell_list[0].value
                     field_value = cell_value.decode('utf-8')
                     field_name = column_qualifier.decode('utf-8')
-                    field_type = PydanticUtils.get_field_type(self.model_class, field_name)
+                    field_type = PydanticUtils.get_native_field_type(self.model_class, field_name)
                     #if field_type is None,ignore this field,otherwise convert it to pydantic field
                     if field_type is not None:
                         if self.cf_migration and field_name in self.cf_migration.keys():

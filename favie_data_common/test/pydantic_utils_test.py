@@ -27,9 +27,9 @@ class TestPydanticUtils(unittest.TestCase):
         
 
     def test_get_field_type(self):
-        self.assertEqual(PydanticUtils.get_field_type(TestModel, "name"), str)
-        self.assertEqual(PydanticUtils.get_field_type(TestModel, "age"), int)
-        self.assertIsNone(PydanticUtils.get_field_type(TestModel, "non_existent_field"))
+        self.assertEqual(PydanticUtils.get_native_field_type(TestModel, "name"), str)
+        self.assertEqual(PydanticUtils.get_native_field_type(TestModel, "age"), int)
+        self.assertIsNone(PydanticUtils.get_native_field_type(TestModel, "non_existent_field"))
 
     def test_get_native_type(self):
         self.assertEqual(PydanticUtils.get_native_type(Optional[int]), int)
