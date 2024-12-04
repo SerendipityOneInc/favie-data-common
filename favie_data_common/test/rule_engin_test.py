@@ -109,7 +109,7 @@ rules = [
                 {"name": "name", "operator": "matches_cached_regex", "value": "^Special.*"}
             ]
         },
-        "actions": [{"name": "log_action", "params": {"message": "Regex Matched: Special product detected!"}}]
+        "actions": [{"name": "log_action", "params": {"message": "Regex Cache Matched: Special product detected!"}}]
     },
     {
         "conditions": {
@@ -135,6 +135,14 @@ rules = [
             ]
         },
         "actions": [{"name": "log_action",   "params": {"message": "Product city contains addresses in New York!"}}]
+    },
+    {
+        "conditions": {
+            "all": [
+                {"name": "addresses_city","operator": "contains_not","value": "New York"}
+            ]
+        },
+        "actions": [{"name": "log_action",   "params": {"message": "Product city contains not addresses in New York!"}}]
     },
     
 ]

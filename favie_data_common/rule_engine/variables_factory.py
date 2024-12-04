@@ -18,8 +18,11 @@ from business_rules.operators import (
 from pydantic import BaseModel
 from business_rules.fields import FIELD_TEXT
 from favie_data_common.common.pydantic_utils import PydanticUtils
-from favie_data_common.rule_engine.operators.matches_cached_regex import matches_cached_regex
-from favie_data_common.rule_engine.operators.operator_utils import register_operator_to_string_type
+from favie_data_common.rule_engine.operators.favie_operators import (
+    register_operator,
+    matches_cached_regex,
+    contains_not
+)
 
 """
     规则对应的Operator
@@ -55,13 +58,8 @@ from favie_data_common.rule_engine.operators.operator_utils import register_oper
     shares_no_elements_with
 """
 
-register_operator_to_string_type(
-    name="matches_cached_regex",
-    operator_func=matches_cached_regex,
-    input_type=FIELD_TEXT,
-    label="Matches Cached Regex"
-)
-
+register_operator(StringType,matches_cached_regex)
+register_operator(SelectType,contains_not)
 
 def favie_select_rule_variable(label=None, options=None):
     def decorator(func):
