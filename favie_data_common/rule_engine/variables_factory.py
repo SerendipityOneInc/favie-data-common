@@ -1,4 +1,4 @@
-from typing import Dict, List, Type, Optional,Any, Union, get_type_hints
+from typing import Dict, List, Set, Tuple, Type, Optional,Any, Union, get_type_hints
 from business_rules.variables import (
     BaseVariables,
     numeric_rule_variable,
@@ -154,11 +154,11 @@ class VariablesFactory:
                     field_type = field_type_args[0]  # 取出实际类型
 
             # 仅为支持的基础类型生成差异规则
-            if field_type not in [int, float, str]:
+            if field_type not in [int, float, str,list,List]:
                 return None
 
             @numeric_rule_variable
-            def diff_field(self:DynamicVariables):
+            def diff_field(self: DynamicVariables):
                 if not pydantic_model:
                     return 0
                 base_value = getattr(self.base_instance, field_name, None)
@@ -169,7 +169,31 @@ class VariablesFactory:
                     return (new_value or 0) - (base_value or 0)
                 if field_type == str:
                     return len(new_value or "") - len(base_value or "")
+                if field_type == list or field_type == List:
+                    if not base_value:
+                        return len(new_value or [])
+                    if not new_value:
+                        return -len(base_value)
+                    return len(new_value) - len(base_value)
+                if field_type == set or field_type == Set:
+                    base_set = base_value or set()
+                    new_set = new_value or set()
+                    # 计算集合的差异个数
+                    return len(new_set - base_set)
+                if field_type == dict or field_type == Dict:
+                    base_dict = base_value or {}
+                    new_dict = new_value or {}
+                    # 可以计算键的差异个数
+                    return len(set(new_dict.keys())) - len(set(base_dict.keys()))
+                if field_type == tuple or field_type == Tuple:
+                    if not base_value:
+                        return len(new_value or ())
+                    if not new_value:
+                        return -len(base_value)
+                    return len(new_value) - len(base_value)
+
                 return 0
+
 
             setattr(DynamicVariables, f"{field_name}_diff", diff_field)
 
