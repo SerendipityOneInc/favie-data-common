@@ -208,8 +208,9 @@ class VariablesFactory:
             # 生成所有属性为基础类型的规则变量
             for sub_field_name, sub_field_type in PydanticUtils.get_fields_of_pydantic_class(field_type):
                 variable_name = f"{field_name}_{sub_field_name}"
-                if sub_field_type in [int, float, str, bool]:
-                    rule_variable = get_rule_variable(sub_field_type)
+                native_sub_field_type = PydanticUtils.get_native_type(sub_field_type)
+                if native_sub_field_type in [int, float, str, bool]:
+                    rule_variable = get_rule_variable(native_sub_field_type)
                     if not rule_variable:
                         continue
                     #通过闭包生成getter，因为闭包是在循环中，需要使用默认参数，不然会出现变量名重复的问题
@@ -223,7 +224,7 @@ class VariablesFactory:
                             return None
                         return nested_getter                 
                     setattr(DynamicVariables, variable_name, make_getter(sub_field_name))
-                if PydanticUtils.is_type_of_list(sub_field_type):
+                if PydanticUtils.is_type_of_list(native_sub_field_type):
                     @favie_select_rule_variable  # 用于规则引擎集合操作
                     def list_getter(self:DynamicVariables)->list:
                         nested_list = getattr(self.new_instance, field_name, [])

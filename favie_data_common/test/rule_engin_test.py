@@ -14,10 +14,10 @@ class Address(BaseModel):
     """
     地址模型定义
     """
-    street: str
-    city: str
-    state: str
-    zip_code: str
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
 
 class Product(BaseModel):
     """
