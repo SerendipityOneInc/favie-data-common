@@ -4,7 +4,8 @@ from business_rules.variables import (
     numeric_rule_variable,
     string_rule_variable,
     boolean_rule_variable,
-    select_rule_variable
+    select_rule_variable,
+    select_multiple_rule_variable
 )
 from business_rules.operators import (
     BaseType,
@@ -189,11 +190,8 @@ class VariablesFactory:
                     rule_variable = get_rule_variable(sub_field_type)
                     if not rule_variable:
                         continue
-
-                    print(f"Sub field: {sub_field_name} | Variable name: {variable_name}")
-                    
                     #通过闭包生成getter，因为闭包是在循环中，需要使用默认参数，不然会出现变量名重复的问题
-                    def make_getter(variable_name, sub_field_name):
+                    def make_getter(sub_field_name):
                         @rule_variable
                         def nested_getter(self: DynamicVariables):
                             nested_obj = getattr(self.new_instance, field_name, None)
@@ -202,7 +200,7 @@ class VariablesFactory:
                                 return sub_value
                             return None
                         return nested_getter                 
-                    setattr(DynamicVariables, variable_name, make_getter(variable_name, sub_field_name))
+                    setattr(DynamicVariables, variable_name, make_getter(sub_field_name))
                 if PydanticUtils.is_type_of_list(sub_field_type):
                     @favie_select_rule_variable  # 用于规则引擎集合操作
                     def list_getter(self:DynamicVariables)->list:
