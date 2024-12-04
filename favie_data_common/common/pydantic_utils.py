@@ -37,8 +37,6 @@ class PydanticUtils:
     def get_fields_of_pydantic_class(data_type: type) -> List[str]:
         if not PydanticUtils.is_type_of_pydantic_class(data_type):
             return []
-        for field_name, field_type in data_type.model_fields.items():
-            print(field_name, field_type)
         return [(field_name,field_type.annotation) for field_name,field_type in data_type.model_fields.items()]
         
     @staticmethod
