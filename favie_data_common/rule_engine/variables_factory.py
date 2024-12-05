@@ -2,67 +2,18 @@ from typing import Dict, List, Set, Tuple, Type, Optional,Any, Union, get_type_h
 from business_rules.variables import (
     BaseVariables
 )
-
-from business_rules.operators import (
-    StringType,
-    SelectType,
-    SelectMultipleType
-)
-
 from pydantic import BaseModel
-from business_rules.fields import FIELD_TEXT
 from favie_data_common.common.pydantic_utils import PydanticUtils
 from favie_data_common.rule_engine.operators.favie_operators import (
-    register_operator,
-    matches_cached_regex,
-    contains_not
+    FavieSelectMultipleType, 
+    FavieSelectType
 )
-
 from favie_data_common.rule_engine.operators.favie_variables import (
     favie_boolean_rule_variable, 
     favie_numeric_rule_variable, 
     favie_string_rule_variable,
     favie_select_rule_variable
 )
-
-"""
-    规则对应的Operator
-    @numeric_rule_variable operators:
-    equal_to
-    greater_than
-    less_than
-    greater_than_or_equal_to
-    less_than_or_equal_to
-
-    @string_rule_variable operators:
-    equal_to
-    equal_to_case_insensitive
-    starts_with
-    ends_with
-    contains
-    matches_regex
-    non_empty
-
-    @boolean_rule_variable operators:
-    is_true
-    is_false
-
-    @select_rule_variable operators:
-    contains
-    does_not_contain
-
-    @select_multiple_rule_variable operators:
-    contains_all
-    is_contained_by
-    shares_at_least_one_element_with
-    shares_exactly_one_element_with
-    shares_no_elements_with
-"""
-
-register_operator(StringType,matches_cached_regex)
-register_operator(SelectType,contains_not)
-
-
 
 class VariablesFactory:
     """
@@ -80,14 +31,14 @@ class VariablesFactory:
             def select_rule_variable(label=None, options=None):
                 if callable(label):
                     # 如果直接传入方法作为参数，可能是无参数装饰器的应用方式
-                    return rule_variable(SelectType)(label)
-                return rule_variable(SelectType, label=label, options=options)
+                    return rule_variable(FavieSelectType)(label)
+                return rule_variable(FavieSelectType, label=label, options=options)
             
             def select_multiple_rule_variable(label=None, options=None):
                 if callable(label):
                     # 如果直接传入方法作为参数，可能是无参数装饰器的应用方式
-                    return rule_variable(SelectMultipleType)(label)
-                return rule_variable(SelectMultipleType, label=label, options=options)
+                    return rule_variable(FavieSelectMultipleType)(label)
+                return rule_variable(FavieSelectMultipleType, label=label, options=options)
                             
         def get_rule_variable(field_type: Any):
             """
@@ -221,7 +172,7 @@ class VariablesFactory:
                                 else:
                                     result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
                         return result
-                    list_getter.field_type = SelectType
+                    list_getter.field_type = FavieSelectType
                     setattr(DynamicVariables, variable_name, list_getter)
 
         def bind_list_field(field_name: str, field_type: Any):
@@ -246,7 +197,7 @@ class VariablesFactory:
                         else:
                             result.append(nested_item)  # 非 BaseModel，直接返回原始对象                    
                 return result
-            list_getter.field_type = SelectType
+            list_getter.field_type = FavieSelectType
             setattr(DynamicVariables, field_name, list_getter)
             
         def bind_list_field_by_subfield(field_name: str, field_type: Any):
@@ -271,7 +222,7 @@ class VariablesFactory:
                                 if value:
                                     result.append(value)                   
                         return result
-                    list_field_getter.field_type = SelectType
+                    list_field_getter.field_type = FavieSelectType
                     return list_field_getter
                 setattr(DynamicVariables, f"{field_name}_{sub_field_name}" ,mark_list_field_getter(field_name, sub_field_name))           
 

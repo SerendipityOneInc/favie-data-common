@@ -1,71 +1,21 @@
 from business_rules.variables import (
     _rule_variable_wrapper,
-    rule_variable,
-    select_rule_variable
-)
-from business_rules.operators import (
-    StringType,
-    SelectType,
-    SelectMultipleType,
-    NumericType,
-    BooleanType,
-    string_types,
-    float_to_decimal,
-    integer_types,
-    Decimal
+    rule_variable
 )
 
-class FavieNumericType(NumericType):
-    @staticmethod
-    def _assert_valid_value_and_cast(value):
-        if value is None:
-            return None
-        if isinstance(value, float):
-            # In python 2.6, casting float to Decimal doesn't work
-            return float_to_decimal(value)
-        if isinstance(value, integer_types):
-            return Decimal(value)
-        if isinstance(value, Decimal):
-            return value
-        else:
-            raise AssertionError("{0} is not a valid numeric type.".
-                                 format(value))
-
-class FavieBooleanType(BooleanType):
-    def _assert_valid_value_and_cast(self, value):
-        if value is None:
-            return False
-        
-        if type(value) != bool:
-            raise AssertionError("{0} is not a valid boolean type".
-                                 format(value))
-            
-        return value
-    
-class FavieSelectType(SelectType):
-    def _assert_valid_value_and_cast(self, value):
-        if value is None:
-            return None
-        
-        if not hasattr(value, '__iter__'):
-            raise AssertionError("{0} is not a valid select type".
-                                    format(value))
-        return value
-    
-class FavieSelectMultipleType(SelectMultipleType):
-    def _assert_valid_value_and_cast(self, value):
-        if value is None:
-            return None
-        if not hasattr(value, '__iter__'):
-            raise AssertionError("{0} is not a valid select multiple type".
-                                 format(value))
-        return value
+from favie_data_common.rule_engine.operators.favie_operators import (
+    FavieBooleanType,
+    FavieNumericType,
+    FavieSelectMultipleType,
+    FavieSelectType,
+    FavieStringType
+)
 
 def favie_numeric_rule_variable(label=None):
     return _rule_variable_wrapper(FavieNumericType, label)
 
 def favie_string_rule_variable(label=None):
-    return _rule_variable_wrapper(StringType, label)
+    return _rule_variable_wrapper(FavieStringType, label)
 
 def favie_boolean_rule_variable(label=None):
     return _rule_variable_wrapper(FavieBooleanType, label)
@@ -89,7 +39,7 @@ def favie_select_rule_variable(label=None, options=None):
     return decorator
 
 def _favie_select_multiple_rule_variable(label=None, options=None):
-    return rule_variable(SelectMultipleType, label=label, options=options)
+    return rule_variable(FavieSelectMultipleType, label=label, options=options)
 
 def favie_select_multiple_rule_variable(label=None, options=None):
     def decorator(func):
