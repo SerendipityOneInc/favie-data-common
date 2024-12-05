@@ -143,8 +143,7 @@ rules = [
             ]
         },
         "actions": [{"name": "log_action",   "params": {"message": "Product city contains not addresses in New York!"}}]
-    },
-    
+    }        
 ]
 
 
