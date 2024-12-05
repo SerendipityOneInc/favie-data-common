@@ -183,7 +183,7 @@ if __name__ == "__main__":
                 Address(street="123 Main St", city="Anytown", state="NY", zip_code="12345"),
                 Address(street="456 Elm St", city="New York", state="NY", zip_code="54321")
             ],
-            main_address=Address(street="456 Elm St", city="New York", state="NY", zip_code="54321")
+            # main_address=Address(street="456 Elm St", city="New York", state="NY", zip_code="54321")
         ),
         Product(
             name="Special Promo Item",

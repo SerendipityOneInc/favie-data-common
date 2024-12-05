@@ -1,20 +1,14 @@
 from typing import Dict, List, Set, Tuple, Type, Optional,Any, Union, get_type_hints
 from business_rules.variables import (
-    BaseVariables,
-    numeric_rule_variable,
-    string_rule_variable,
-    boolean_rule_variable,
-    select_rule_variable,
-    select_multiple_rule_variable
+    BaseVariables
 )
+
 from business_rules.operators import (
-    BaseType,
-    NumericType,
     StringType,
-    BooleanType,
     SelectType,
     SelectMultipleType
 )
+
 from pydantic import BaseModel
 from business_rules.fields import FIELD_TEXT
 from favie_data_common.common.pydantic_utils import PydanticUtils
@@ -22,6 +16,13 @@ from favie_data_common.rule_engine.operators.favie_operators import (
     register_operator,
     matches_cached_regex,
     contains_not
+)
+
+from favie_data_common.rule_engine.operators.favie_variables import (
+    favie_boolean_rule_variable, 
+    favie_numeric_rule_variable, 
+    favie_string_rule_variable,
+    favie_select_rule_variable
 )
 
 """
@@ -61,20 +62,7 @@ from favie_data_common.rule_engine.operators.favie_operators import (
 register_operator(StringType,matches_cached_regex)
 register_operator(SelectType,contains_not)
 
-def favie_select_rule_variable(label=None, options=None):
-    def decorator(func):
-        # 使用第三方的 select_rule_variable 装饰器
-        wrapped_func = select_rule_variable(label, options)(func)
-        # 这里可以加入自己的自定义逻辑，扩展原始装饰器的行为
-        # 例如，增加调试信息或调整一些属性
 
-        return wrapped_func
-    
-    if callable(label):
-        # 如果是无参数调用
-        return decorator(label)
-
-    return decorator
 
 class VariablesFactory:
     """
@@ -112,11 +100,11 @@ class VariablesFactory:
 
             # 处理基础类型
             if native_file_type in [int, float]:
-                return numeric_rule_variable
+                return favie_numeric_rule_variable
             elif native_file_type == str:
-                return string_rule_variable
+                return favie_string_rule_variable
             elif native_file_type == bool:
-                return boolean_rule_variable
+                return favie_boolean_rule_variable
 
             # 默认：不支持的字段类型
             return None
@@ -152,7 +140,7 @@ class VariablesFactory:
             """绑定差异字段规则变量。"""
             native_faile_type = PydanticUtils.get_native_type(field_type)
             
-            @numeric_rule_variable
+            @favie_numeric_rule_variable
             def diff_field(self: DynamicVariables):
                 if not pydantic_model:
                     return 0
