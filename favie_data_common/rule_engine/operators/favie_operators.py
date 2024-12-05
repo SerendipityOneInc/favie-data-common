@@ -169,15 +169,6 @@ class FavieSelectType(SelectType):
                 return True
         return False
     
-    @type_operator(FIELD_SELECT, label='Contains Not', assert_type_for_arguments=False)
-    def only_contains(self, other_value):
-        if self.value is None:
-            return False
-        
-        for val in self.value:
-            if not self._case_insensitive_equal_to(val, other_value):
-                return False
-        return True
     
 class FavieSelectMultipleType(SelectMultipleType):
     def _assert_valid_value_and_cast(self, value):
