@@ -1,6 +1,7 @@
+import json
 import unittest
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import Dict, List, Optional
+from pydantic import BaseModel, field_validator
 from favie_data_common.common.pydantic_utils import PydanticUtils  # 请替换为实际的导入路径
 
 class TestModel(BaseModel):
@@ -11,6 +12,58 @@ class ComplexTestModel(BaseModel):
     id: Optional[int] = None
     data: Optional[TestModel] = None
     tags: Optional[List[str]] = None
+    
+class Address(BaseModel):
+    city: Optional[str] = None
+    street: Optional[str] = None
+    zip_code: Optional[str] = None
+
+
+# 一个简单的 Pydantic 模型
+class Product(BaseModel):
+    id: Optional[int] = None
+
+    @field_validator("id", mode="before")
+    def validate_id(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "id")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    name: Optional[str] = None
+
+    @field_validator("name", mode="before")
+    def validate_name(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "name")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    colors: Optional[List[str]] = None
+
+    @field_validator("colors", mode="before")
+    def validate_colors(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "colors")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    addresses: Optional[List[Address]] = None
+
+    @field_validator("addresses", mode="before")
+    def validate_addresses(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "addresses")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    main_address: Optional[Address] = None
+
+    @field_validator("main_address", mode="before")
+    def validate_main_address(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "main_address")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    attributes: Optional[Dict[str, str]] = None
+    @field_validator("attributes", mode="before")
+    def validate_attributes(cls, value):
+        expected_type = PydanticUtils.get_native_field_type(cls, "attributes")
+        return PydanticUtils.deserialize_data(expected_type, value)
+
+    
+
 
 class TestPydanticUtils(unittest.TestCase):
     def test_is_type_of_list(self):
@@ -61,7 +114,62 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertEqual(PydanticUtils.merge_object(source_obj=None,dest_obj= dest), dest)
         self.assertEqual(PydanticUtils.merge_object(source_obj=source,dest_obj= None), source)
         
+    def test_deserialize_basic_types(self):
+        json_str = '{"id": 1, "name": "Item1"}'
+        json_data = json.loads(json_str)
+        self.assertEqual(Product(**json_data), Product(id=1, name="Item1"))
 
+        json_str = '{"id": "1", "name": "Item1"}'
+        json_data = json.loads(json_str)
+        self.assertEqual(Product(**json_data), Product(id=1, name="Item1"))
+
+    def test_deserialize_list_types(self):
+        json_str = '{"colors": ["red", "green", "blue"]}'
+        json_data = json.loads(json_str)
+        self.assertEqual(Product(**json_data), Product(colors=["red", "green", "blue"]))
+
+        json_str = '{"colors": "[\\"red\\", \\"green\\", \\"blue\\"]"}'
+        json_data = json.loads(json_str)
+        self.assertEqual(Product(**json_data), Product(colors=["red", "green", "blue"]))
+
+    def test_deserialize_pydantic_types(self):
+        json_str = '{"main_address": {"city": "Shanghai", "street": "Nanjing Road", "zip_code": "200000"}}'
+        json_data = json.loads(json_str)
+        self.assertEqual(
+            Product(**json_data),
+            Product(main_address=Address(city="Shanghai", street="Nanjing Road", zip_code="200000")),
+        )
+
+        json_str = '{"main_address": "{\\"city\\": \\"Shanghai\\", \\"street\\": \\"Nanjing Road\\", \\"zip_code\\": \\"200000\\"}"}'
+        json_data = json.loads(json_str)
+        self.assertEqual(
+            Product(**json_data),
+            Product(main_address=Address(city="Shanghai", street="Nanjing Road", zip_code="200000")),
+        )
+
+        json_str = '{"addresses": [{"city": "Shanghai", "street": "Nanjing Road", "zip_code": "200000"}, {"city": "Beijing", "street": "Wangfujing", "zip_code": "100000"}]}'
+        json_data = json.loads(json_str)
+        self.assertEqual(
+            Product(**json_data),
+            Product(
+                addresses=[
+                    Address(city="Shanghai", street="Nanjing Road", zip_code="200000"),
+                    Address(city="Beijing", street="Wangfujing", zip_code="100000"),
+                ]
+            ),
+        )
+
+        json_str = '{"addresses": "[{\\"city\\": \\"Shanghai\\", \\"street\\": \\"Nanjing Road\\", \\"zip_code\\": \\"200000\\"}, {\\"city\\": \\"Beijing\\", \\"street\\": \\"Wangfujing\\", \\"zip_code\\": \\"100000\\"}]"}'
+        json_data = json.loads(json_str)
+        self.assertEqual(
+            Product(**json_data),
+            Product(
+                addresses=[
+                    Address(city="Shanghai", street="Nanjing Road", zip_code="200000"),
+                    Address(city="Beijing", street="Wangfujing", zip_code="100000"),
+                ]
+            ),
+        )
         
 if __name__ == '__main__':
     unittest.main()

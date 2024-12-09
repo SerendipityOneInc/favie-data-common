@@ -104,6 +104,15 @@ class PydanticUtils:
             return None
 
         expected_type = PydanticUtils.get_native_type(expected_type)
+
+        #如何是Any类型，如果value是字符串类型，尝试将其转换为json对象，如果转化失败则返回原始字符串
+        if expected_type == Any:
+            if isinstance(value, str):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return value
+        
         # 检查并转换基本类型
         if expected_type in {int, float, str, bool}:
             try:
