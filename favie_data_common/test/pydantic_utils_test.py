@@ -88,6 +88,14 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertEqual(PydanticUtils.get_native_type(Optional[int]), int)
         self.assertEqual(PydanticUtils.get_native_type(int), int)
         self.assertEqual(PydanticUtils.get_native_type(Optional[List[str]]), List[str])
+        
+    def test_is_simple_type(self):
+        self.assertTrue(PydanticUtils.is_simple_type(int))
+        self.assertTrue(PydanticUtils.is_simple_type(str))
+        self.assertTrue(PydanticUtils.is_simple_type(float))
+        self.assertTrue(PydanticUtils.is_simple_type(bool))
+        self.assertFalse(PydanticUtils.is_simple_type(List[int]))
+        self.assertFalse(PydanticUtils.is_simple_type(Dict[str, int]))
 
     def test_merge_object(self):
         source = TestModel(name="Alice", age=30)

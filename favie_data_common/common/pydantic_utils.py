@@ -33,6 +33,12 @@ class PydanticUtils:
             return issubclass(data_type, BaseModel)
         except TypeError:
             return False
+        
+    @staticmethod
+    def is_simple_type(expected_type):
+        origin = get_origin(expected_type)
+        simple_types = {int, float, str, bool}
+        return (origin in simple_types) if origin else (expected_type in simple_types)
     
     @staticmethod
     def get_fields_of_pydantic_class(data_type: type) -> List[str]:
@@ -114,7 +120,7 @@ class PydanticUtils:
                     return value
         
         # 检查并转换基本类型
-        if expected_type in {int, float, str, bool}:
+        if PydanticUtils.is_simple_type(expected_type):
             try:
                 return expected_type(value)
             except ValueError:
