@@ -118,6 +118,8 @@ class PydanticUtils:
                     return json.loads(value)
                 except json.JSONDecodeError:
                     return value
+            else:
+                return value
         
         # 检查并转换基本类型
         if PydanticUtils.is_simple_type(expected_type):
