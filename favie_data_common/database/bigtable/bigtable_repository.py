@@ -35,7 +35,8 @@ class BigtableRepository:
                  cf_config:dict[str,str]=None,
                  bigtable_index:'BigtableIndexRepository'=None,
                  cf_migration:dict[str,(str,str)]=None,
-                 derializer_config:dict[str,FieldDeserializer]=None
+                 derializer_config:dict[str,FieldDeserializer]=None,
+                 model_define_deserializer:bool = False
             ):
         '''
             bigtable_project_id: BigTable 项目 ID
@@ -65,6 +66,7 @@ class BigtableRepository:
         #初始化列族列表
         self.__init_cf_list()
         self.executor = ThreadPoolExecutor(max_workers=4)
+        self.model_define_deserializer = model_define_deserializer
         self.logger = logging.getLogger(__name__)
         
     def __init_cf_list(self):
@@ -284,7 +286,7 @@ class BigtableRepository:
                     cell_value = cell_list[0].value
                     field_value = cell_value.decode('utf-8')
                     field_name = column_qualifier.decode('utf-8')
-                    field_type = PydanticUtils.get_field_type(self.model_class, field_name)
+                    field_type = PydanticUtils.get_native_field_type(self.model_class, field_name)
                     #if field_type is None,ignore this field,otherwise convert it to pydantic field
                     if field_type is not None:
                         if self.cf_migration and field_name in self.cf_migration.keys():
@@ -306,7 +308,10 @@ class BigtableRepository:
     def __derialize_field(self,field_name:str,field_value:str,field_type:type):
         if self.derializer_config and field_name in self.derializer_config.keys():
             return self.derializer_config[field_name].deserialize(field_value)
-        return BigtableUtils.str_convert_pydantic_field(field_value, field_type)
+        if self.model_define_deserializer:
+            return field_value
+        else:
+            return BigtableUtils.str_convert_pydantic_field(field_value, field_type)
     
     def __delete_migeration_fields(self,row_key:str,fields:set[str]):
         try:

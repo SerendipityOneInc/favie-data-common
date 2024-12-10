@@ -1,4 +1,5 @@
-from typing import Dict, Optional, Set, Tuple, Union, List
+import json
+from typing import Dict, Optional, Set, Tuple, Union, List,Any
 from typing import List, get_args, get_origin
 from pydantic import BaseModel
 from favie_data_common.common.common_utils import CommonUtils
@@ -24,9 +25,40 @@ class PydanticUtils:
         origin_type = get_origin(data_type)
         return origin_type == tuple or origin_type == Tuple
     
+    @staticmethod
+    def is_type_of_pydantic_class(data_type: type) -> bool:
+        try:
+            if data_type is None:
+                return False
+            return issubclass(data_type, BaseModel)
+        except TypeError:
+            return False
+        
+    @staticmethod
+    def is_simple_type(expected_type):
+        origin = get_origin(expected_type)
+        simple_types = {int, float, str, bool}
+        return (origin in simple_types) if origin else (expected_type in simple_types)
+    
+    @staticmethod
+    def get_fields_of_pydantic_class(data_type: type) -> List[str]:
+        if not PydanticUtils.is_type_of_pydantic_class(data_type):
+            return []
+        return [(field_name,field_type.annotation) for field_name,field_type in data_type.model_fields.items()]
+        
+    @staticmethod
+    def get_list_item_type(field_type):
+        # 确认 field_type 是一个泛型类型并且起源是 list
+        if get_origin(field_type) in (list, List):
+            # 获取参数类型 (即 list 的 item 类型)
+            item_types = get_args(field_type)
+            if item_types:
+                return item_types[0]  # 通常 List 会仅有一个参数
+        return None
+    
     #获取字段类型
     @staticmethod
-    def get_field_type(model: BaseModel, field_name: str):
+    def get_native_field_type(model: BaseModel, field_name: str):
         type = model.model_fields.get(field_name)
         native_type = PydanticUtils.get_native_type(type.annotation if type else None)
         return native_type
@@ -70,3 +102,61 @@ class PydanticUtils:
                         setattr(dest_obj, field_name, source_value)
         
         return dest_obj
+    
+
+    @staticmethod
+    def deserialize_data(expected_type: Any, value: Any) -> Any:
+        if value is None:
+            return None
+
+        expected_type = PydanticUtils.get_native_type(expected_type)
+
+        #如何是Any类型，如果value是字符串类型，尝试将其转换为json对象，如果转化失败则返回原始字符串
+        if expected_type == Any:
+            if isinstance(value, str):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return value
+            else:
+                return value
+        
+        # 检查并转换基本类型
+        if PydanticUtils.is_simple_type(expected_type):
+            try:
+                return expected_type(value)
+            except ValueError:
+                raise ValueError(f"Cannot convert value '{value}' to {expected_type.__name__}")
+
+        # 处理字符串形式的复杂结构
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid JSON string for deserializing {expected_type}")
+
+        if PydanticUtils.is_type_of_pydantic_class(expected_type):
+            # 对 Pydantic 模型进行处理
+            if isinstance(value, dict):
+                fields = PydanticUtils.get_fields_of_pydantic_class(expected_type)
+                return expected_type(**{field_name : PydanticUtils.deserialize_data(field_type, value.get(field_name)) for field_name, field_type in fields})
+            else:
+                return value
+        
+        # 检查并处理复杂类型
+        if PydanticUtils.is_type_of_list(expected_type):
+            item_type = get_args(expected_type)[0]
+            return [PydanticUtils.deserialize_data(item_type, item) for item in value]
+        elif PydanticUtils.is_type_of_set(expected_type):
+            item_type = get_args(expected_type)[0]
+            return {PydanticUtils.deserialize_data(item_type, item) for item in value}
+        elif PydanticUtils.is_type_of_tuple(expected_type):
+            item_types = get_args(expected_type)
+            return tuple(PydanticUtils.deserialize_data(item_type, item) for item_type, item in zip(item_types, value))
+        elif PydanticUtils.is_type_of_dict(expected_type):
+            key_type, val_type = get_args(expected_type)
+            return {PydanticUtils.deserialize_data(key_type, k): PydanticUtils.deserialize_data(val_type, v) for k, v in value.items()}
+
+        # 默认返回原始值
+        return value
+        
