@@ -33,7 +33,7 @@ jobs:
       run: |
         poetry config pypi-token.github $GITHUB_TOKEN
         poetry build
-        poetry publish -r github
+        poetry publish -r ${{ github.event.repository.name }}
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
