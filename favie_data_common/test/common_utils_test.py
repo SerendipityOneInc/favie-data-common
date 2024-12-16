@@ -1,9 +1,10 @@
 import unittest
 from datetime import datetime, timezone
-from favie_data_common.common.common_utils import CommonUtils  
+
+from favie_data_common.common.common_utils import CommonUtils
+
 
 class TestCommonUtils(unittest.TestCase):
-
     def test_all_not_none(self):
         self.assertTrue(CommonUtils.all_not_none(1, "a", []))
         self.assertFalse(CommonUtils.all_not_none(1, None, "a"))
@@ -11,7 +12,7 @@ class TestCommonUtils(unittest.TestCase):
     def test_any_none(self):
         self.assertTrue(CommonUtils.any_none(1, None, "a"))
         self.assertFalse(CommonUtils.any_none(1, "a", []))
-        
+
     def test_any_not_none(self):
         self.assertTrue(CommonUtils.any_not_none(1, None, "a"))
         self.assertFalse(CommonUtils.any_not_none(None, None, None))
@@ -91,10 +92,10 @@ class TestCommonUtils(unittest.TestCase):
         result = CommonUtils.datetime_string_to_timestamp("2024-08-29T10:17:21")
         expected = datetime(2024, 8, 29, 10, 17, 21, tzinfo=timezone.utc).timestamp()
         self.assertAlmostEqual(result, expected, places=6)
-        
+
     def test_none_utc(self):
         result = CommonUtils.datetime_string_to_timestamp(None)
-        self.assertEqual(result, None)       
+        self.assertEqual(result, None)
 
     def test_no_timezone_not_assume_utc(self):
         with self.assertRaises(ValueError):
@@ -115,8 +116,7 @@ class TestCommonUtils(unittest.TestCase):
             with self.subTest(date_format=date_format):
                 result = CommonUtils.datetime_string_to_timestamp(date_format)
                 self.assertAlmostEqual(result, expected, places=6)
-                
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     unittest.main()
-    
-    

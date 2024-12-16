@@ -1,18 +1,23 @@
 import json
 import unittest
 from typing import Dict, List, Optional
+
 from pydantic import BaseModel, field_validator
+
 from favie_data_common.common.pydantic_utils import PydanticUtils  # 请替换为实际的导入路径
+
 
 class TestModel(BaseModel):
     name: Optional[str] = None
     age: Optional[int] = None
 
+
 class ComplexTestModel(BaseModel):
     id: Optional[int] = None
     data: Optional[TestModel] = None
     tags: Optional[List[str]] = None
-    
+
+
 class Address(BaseModel):
     city: Optional[str] = None
     street: Optional[str] = None
@@ -57,12 +62,11 @@ class Product(BaseModel):
         return PydanticUtils.deserialize_data(expected_type, value)
 
     attributes: Optional[Dict[str, str]] = None
+
     @field_validator("attributes", mode="before")
     def validate_attributes(cls, value):
         expected_type = PydanticUtils.get_native_field_type(cls, "attributes")
         return PydanticUtils.deserialize_data(expected_type, value)
-
-    
 
 
 class TestPydanticUtils(unittest.TestCase):
@@ -71,13 +75,12 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertTrue(PydanticUtils.is_type_of_list(List[str]))
         self.assertFalse(PydanticUtils.is_type_of_list(int))
         self.assertFalse(PydanticUtils.is_type_of_list(str))
-        
+
     def test_is_type_of_dict(self):
-        self.assertTrue(PydanticUtils.is_type_of_dict(dict[any,any]))
+        self.assertTrue(PydanticUtils.is_type_of_dict(dict[any, any]))
         self.assertTrue(PydanticUtils.is_type_of_dict(dict[str, int]))
         self.assertFalse(PydanticUtils.is_type_of_dict(int))
         self.assertFalse(PydanticUtils.is_type_of_dict(str))
-        
 
     def test_get_field_type(self):
         self.assertEqual(PydanticUtils.get_native_field_type(TestModel, "name"), str)
@@ -88,7 +91,7 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertEqual(PydanticUtils.get_native_type(Optional[int]), int)
         self.assertEqual(PydanticUtils.get_native_type(int), int)
         self.assertEqual(PydanticUtils.get_native_type(Optional[List[str]]), List[str])
-        
+
     def test_is_simple_type(self):
         self.assertTrue(PydanticUtils.is_simple_type(int))
         self.assertTrue(PydanticUtils.is_simple_type(str))
@@ -100,28 +103,30 @@ class TestPydanticUtils(unittest.TestCase):
     def test_merge_object(self):
         source = TestModel(name="Alice", age=30)
         dest = TestModel(name="Bob", age=None)
-        
-        merged = PydanticUtils.merge_object(source_obj= source,dest_obj= dest)
+
+        merged = PydanticUtils.merge_object(source_obj=source, dest_obj=dest)
         self.assertEqual(merged.name, "Alice")
         self.assertEqual(merged.age, 30)
-        
+
         # 测试深度合并
         source_complex = ComplexTestModel(id=1, data=TestModel(name="Alice", age=30), tags=["tag1"])
         dest_complex = ComplexTestModel(id=2, data=TestModel(name="Bob", age=25), tags=["tag2"])
-        
-        merged_complex = PydanticUtils.merge_object(source_obj=source_complex,dest_obj= dest_complex, deep_merge_fields=["data"])
+
+        merged_complex = PydanticUtils.merge_object(
+            source_obj=source_complex, dest_obj=dest_complex, deep_merge_fields=["data"]
+        )
         self.assertEqual(merged_complex.id, 1)
         self.assertEqual(merged_complex.data.name, "Alice")
         self.assertEqual(merged_complex.data.age, 30)
         self.assertEqual(merged_complex.tags, ["tag1"])
-        
+
         # 测试类型不匹配的情况
         self.assertIsNone(PydanticUtils.merge_object(source_obj=source, dest_obj=source_complex))
-        
+
         # 测试 None 值的处理
-        self.assertEqual(PydanticUtils.merge_object(source_obj=None,dest_obj= dest), dest)
-        self.assertEqual(PydanticUtils.merge_object(source_obj=source,dest_obj= None), source)
-        
+        self.assertEqual(PydanticUtils.merge_object(source_obj=None, dest_obj=dest), dest)
+        self.assertEqual(PydanticUtils.merge_object(source_obj=source, dest_obj=None), source)
+
     def test_deserialize_basic_types(self):
         json_str = '{"id": 1, "name": "Item1"}'
         json_data = json.loads(json_str)
@@ -178,6 +183,7 @@ class TestPydanticUtils(unittest.TestCase):
                 ]
             ),
         )
-        
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     unittest.main()

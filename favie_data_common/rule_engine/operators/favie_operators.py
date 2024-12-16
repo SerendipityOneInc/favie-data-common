@@ -1,30 +1,25 @@
 import re
 from functools import lru_cache
+
+from business_rules.fields import FIELD_NO_INPUT, FIELD_NUMERIC, FIELD_SELECT, FIELD_SELECT_MULTIPLE, FIELD_TEXT
 from business_rules.operators import (
-    StringType,
-    SelectType,
-    SelectMultipleType,
-    NumericType,
     BooleanType,
-    string_types,
+    Decimal,
+    NumericType,
+    SelectMultipleType,
+    SelectType,
+    StringType,
     float_to_decimal,
     integer_types,
-    Decimal,
-    type_operator
+    type_operator,
 )
 
-from business_rules.fields import (
-    FIELD_TEXT,
-    FIELD_SELECT,
-    FIELD_NUMERIC,
-    FIELD_NO_INPUT,
-    FIELD_SELECT_MULTIPLE
-)
 
 # 定义缓存的正则匹配
 @lru_cache(maxsize=1024)
 def get_cached_regex(pattern: str):
     return re.compile(pattern)
+
 
 class FavieStringType(StringType):
     @type_operator(FIELD_TEXT)
@@ -60,7 +55,7 @@ class FavieStringType(StringType):
         if self.value is None:
             return False
         return re.search(regex, self.value)
-    
+
     # 要添加的操作符逻辑
     @type_operator(FIELD_TEXT)
     def matches_cached_regex(self, regex):
@@ -85,9 +80,8 @@ class FavieNumericType(NumericType):
         if isinstance(value, Decimal):
             return value
         else:
-            raise AssertionError("{0} is not a valid numeric type.".
-                                 format(value))
-            
+            raise AssertionError("{0} is not a valid numeric type.".format(value))
+
     @type_operator(FIELD_NUMERIC)
     def equal_to(self, other_numeric):
         if self.value is None:
@@ -118,32 +112,32 @@ class FavieNumericType(NumericType):
             return False
         return self.less_than(other_numeric) or self.equal_to(other_numeric)
 
+
 class FavieBooleanType(BooleanType):
     def _assert_valid_value_and_cast(self, value):
         if value is None:
             return False
-        
+
         if type(value) != bool:
-            raise AssertionError("{0} is not a valid boolean type".
-                                 format(value))
-            
+            raise AssertionError("{0} is not a valid boolean type".format(value))
+
         return value
-    
+
+
 class FavieSelectType(SelectType):
     def _assert_valid_value_and_cast(self, value):
         if value is None:
             return None
-        
-        if not hasattr(value, '__iter__'):
-            raise AssertionError("{0} is not a valid select type".
-                                    format(value))
+
+        if not hasattr(value, "__iter__"):
+            raise AssertionError("{0} is not a valid select type".format(value))
         return value
 
     @type_operator(FIELD_SELECT, assert_type_for_arguments=False)
     def contains(self, other_value):
         if self.value is None:
             return False
-        
+
         for val in self.value:
             if self._case_insensitive_equal_to(val, other_value):
                 return True
@@ -153,30 +147,29 @@ class FavieSelectType(SelectType):
     def does_not_contain(self, other_value):
         if self.value is None:
             return True
-        
+
         for val in self.value:
             if self._case_insensitive_equal_to(val, other_value):
                 return False
         return True
 
-    @type_operator(FIELD_SELECT, label='Contains Not', assert_type_for_arguments=False)
+    @type_operator(FIELD_SELECT, label="Contains Not", assert_type_for_arguments=False)
     def contains_not(self, other_value):
         if self.value is None:
             return True
-        
+
         for val in self.value:
             if not self._case_insensitive_equal_to(val, other_value):
                 return True
         return False
-    
-    
+
+
 class FavieSelectMultipleType(SelectMultipleType):
     def _assert_valid_value_and_cast(self, value):
         if value is None:
             return None
-        if not hasattr(value, '__iter__'):
-            raise AssertionError("{0} is not a valid select multiple type".
-                                 format(value))
+        if not hasattr(value, "__iter__"):
+            raise AssertionError("{0} is not a valid select multiple type".format(value))
         return value
 
     @type_operator(FIELD_SELECT_MULTIPLE)
@@ -222,4 +215,3 @@ class FavieSelectMultipleType(SelectMultipleType):
     @type_operator(FIELD_SELECT_MULTIPLE)
     def shares_no_elements_with(self, other_value):
         return not self.shares_at_least_one_element_with(other_value)
-
