@@ -1,16 +1,18 @@
 import json
-from typing import get_args, Any
+from typing import Any, get_args
+
 from pydantic import BaseModel
 
 from favie_data_common.common.common_utils import CommonUtils
 from favie_data_common.common.pydantic_utils import PydanticUtils
+
 
 class BigtableUtils:
     @staticmethod
     def gen_hash_rowkey(key: str):
         # 假设 CommonUtils是你项目中的工具类实现了md5哈希方法
         md5 = CommonUtils.md5_hash(key)
-        return f'{md5[0:6]}-{key}'  
+        return f"{md5[0:6]}-{key}"
 
     @staticmethod
     def pydantic_field_convert_str(param, force_dump_json: bool = False) -> str:
@@ -23,19 +25,19 @@ class BigtableUtils:
             return param.model_dump_json(exclude_none=True)
         elif isinstance(param, list):  # 列表类型处理
             json_strings = [BigtableUtils.pydantic_field_convert_str(item, True) for item in param]
-            return '[' + ', '.join(json_strings) + ']'
+            return "[" + ", ".join(json_strings) + "]"
         elif isinstance(param, set):  # 集合类型处理 (转化为列表)
             json_strings = [BigtableUtils.pydantic_field_convert_str(item, True) for item in param]
-            return '[' + ', '.join(json_strings) + ']'
+            return "[" + ", ".join(json_strings) + "]"
         elif isinstance(param, tuple):  # 元组类型处理
             json_strings = [BigtableUtils.pydantic_field_convert_str(item, True) for item in param]
-            return '[' + ', '.join(json_strings) + ']'
+            return "[" + ", ".join(json_strings) + "]"
         elif isinstance(param, dict):  # 字典类型处理
             json_pairs = [
-                f'{json.dumps(key)}: {BigtableUtils.pydantic_field_convert_str(value, True)}'
+                f"{json.dumps(key)}: {BigtableUtils.pydantic_field_convert_str(value, True)}"
                 for key, value in param.items()
             ]
-            return '{' + ', '.join(json_pairs) + '}'
+            return "{" + ", ".join(json_pairs) + "}"
         else:
             raise TypeError(f"Unsupported type : {type(param)}")
 
@@ -68,10 +70,7 @@ class BigtableUtils:
             item_type = get_args(data_type)[0] if get_args(data_type) else Any
             items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
-            return [
-                BigtableUtils.str_convert_complex_type(item, item_type)
-                for item in items
-            ]
+            return [BigtableUtils.str_convert_complex_type(item, item_type) for item in items]
 
         # 处理 Set 类型 (Set)
         if PydanticUtils.is_type_of_set(data_type):
@@ -86,7 +85,9 @@ class BigtableUtils:
             items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             if len(item_types) != len(items):
-                raise TypeError(f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(items)}")
+                raise TypeError(
+                    f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(items)}"
+                )
 
             return tuple(
                 BigtableUtils.str_convert_complex_type(item, item_types[index] if index < len(item_types) else Any)
@@ -95,11 +96,13 @@ class BigtableUtils:
 
         # 处理 Dict 类型
         if PydanticUtils.is_type_of_dict(data_type):
-            key_type, value_type = (get_args(data_type) or (Any, Any))  # 如果缺失`Any`作为默认
+            key_type, value_type = get_args(data_type) or (Any, Any)  # 如果缺失`Any`作为默认
             dict_items = json.loads(string_data) if isinstance(string_data, str) else string_data
 
             return {
-                BigtableUtils.str_convert_pydantic_field(key, key_type): BigtableUtils.str_convert_complex_type(value, value_type)
+                BigtableUtils.str_convert_pydantic_field(key, key_type): BigtableUtils.str_convert_complex_type(
+                    value, value_type
+                )
                 for key, value in dict_items.items()
             }
 
@@ -163,12 +166,11 @@ class BigtableUtils:
                 item_types = get_args(expected_type) or (Any,) * len(item)
 
                 if len(item_types) != len(item):
-                    raise TypeError(f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(item)}")
+                    raise TypeError(
+                        f"Mismatch between tuple types and items: expected {len(item_types)} items, got {len(item)}"
+                    )
 
-                return tuple(
-                    BigtableUtils.str_convert_complex_type(i, i_type)
-                    for i, i_type in zip(item, item_types)
-                )
+                return tuple(BigtableUtils.str_convert_complex_type(i, i_type) for i, i_type in zip(item, item_types))
             else:
                 raise TypeError(f"Expected tuple type but got {type(item)} for {expected_type}")
 
@@ -177,7 +179,9 @@ class BigtableUtils:
             if PydanticUtils.is_type_of_dict(expected_type):
                 key_type, value_type = get_args(expected_type) or (Any, Any)
                 return {
-                    BigtableUtils.str_convert_complex_type(k, key_type): BigtableUtils.str_convert_complex_type(v, value_type)
+                    BigtableUtils.str_convert_complex_type(k, key_type): BigtableUtils.str_convert_complex_type(
+                        v, value_type
+                    )
                     for k, v in item.items()
                 }
             else:

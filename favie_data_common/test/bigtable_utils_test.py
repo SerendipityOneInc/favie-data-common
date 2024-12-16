@@ -1,9 +1,11 @@
-import sys
-import unittest
 import json
+import unittest
+from typing import Any, Dict, List, Set, Tuple
+
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Set, Tuple, Any
+
 from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils  # 请确保导入正确
+
 
 # Pydantic 模型
 class TestModel(BaseModel):
@@ -12,13 +14,14 @@ class TestModel(BaseModel):
     is_active: bool
     scores: List[float]
 
+
 # 嵌套模型，用于测试复杂结构的模型
 class TestNestedModel(BaseModel):
     id: int
     test_model: TestModel
 
-class TestBigtableRepository(unittest.TestCase):
 
+class TestBigtableRepository(unittest.TestCase):
     def test_pydantic_field_convert_str(self):
         # 测试原生类型
         self.assertEqual(BigtableUtils.pydantic_field_convert_str(10), "10")
@@ -62,32 +65,40 @@ class TestBigtableRepository(unittest.TestCase):
         # 新增 List[List[BaseModel]] 测试
         list_of_models = [
             [TestModel(name="Inner1", age=20, is_active=True, scores=[89.0])],
-            [TestModel(name="Inner2", age=25, is_active=False, scores=[92.5])]
+            [TestModel(name="Inner2", age=25, is_active=False, scores=[92.5])],
         ]
         expected_list_json = '[ [{"name":"Inner1","age":20,"is_active":true,"scores":[89.0]}], [{"name":"Inner2","age":25,"is_active":false,"scores":[92.5]}] ]'
-        self.assertEqual(json.loads(BigtableUtils.pydantic_field_convert_str(list_of_models, True)), json.loads(expected_list_json))
+        self.assertEqual(
+            json.loads(BigtableUtils.pydantic_field_convert_str(list_of_models, True)), json.loads(expected_list_json)
+        )
 
         # 新增 Dict[str, List[BaseModel]] 测试
         dict_of_models = {
             "group1": [TestModel(name="A", age=18, is_active=True, scores=[90.0])],
-            "group2": [TestModel(name="B", age=22, is_active=False, scores=[95.5])]
+            "group2": [TestModel(name="B", age=22, is_active=False, scores=[95.5])],
         }
         expected_dict_of_models_json = '{"group1": [{"name":"A","age":18,"is_active":true,"scores":[90.0]}], "group2": [{"name":"B","age":22,"is_active":false,"scores":[95.5]}]}'
-        self.assertEqual(json.loads(BigtableUtils.pydantic_field_convert_str(dict_of_models, True)), json.loads(expected_dict_of_models_json))
+        self.assertEqual(
+            json.loads(BigtableUtils.pydantic_field_convert_str(dict_of_models, True)),
+            json.loads(expected_dict_of_models_json),
+        )
 
         # 新增 List[Dict[str, List[BaseModel]]] 测试 —— 更复杂的嵌套结构
         list_of_dict_of_models = [
             {
                 "group1": [TestModel(name="AA", age=30, is_active=True, scores=[100.0])],
-                "group2": [TestModel(name="BB", age=40, is_active=False, scores=[80.0])]
+                "group2": [TestModel(name="BB", age=40, is_active=False, scores=[80.0])],
             },
             {
                 "group3": [TestModel(name="CC", age=50, is_active=True, scores=[70.0])],
-                "group4": [TestModel(name="DD", age=60, is_active=False, scores=[60.0])]
-            }
+                "group4": [TestModel(name="DD", age=60, is_active=False, scores=[60.0])],
+            },
         ]
         expected_list_dict_json = '[{"group1": [{"name": "AA", "age": 30, "is_active": true, "scores": [100.0]}], "group2": [{"name": "BB", "age": 40, "is_active": false, "scores": [80.0]}]}, {"group3": [{"name": "CC", "age": 50, "is_active": true, "scores": [70.0]}], "group4": [{"name": "DD", "age": 60, "is_active": false, "scores": [60.0]}]}]'
-        self.assertEqual(json.loads(BigtableUtils.pydantic_field_convert_str(list_of_dict_of_models, True)), json.loads(expected_list_dict_json))
+        self.assertEqual(
+            json.loads(BigtableUtils.pydantic_field_convert_str(list_of_dict_of_models, True)),
+            json.loads(expected_list_dict_json),
+        )
 
         # 测试不支持的类型 (比如 frozenset)
         with self.assertRaises(TypeError):
@@ -101,10 +112,7 @@ class TestBigtableRepository(unittest.TestCase):
         self.assertEqual(BigtableUtils.str_convert_pydantic_field("true", bool), True)
 
         # 测试列表
-        self.assertEqual(
-            BigtableUtils.str_convert_pydantic_field("[9.5, 8.0]", List[float]),
-            [9.5, 8.0]
-        )
+        self.assertEqual(BigtableUtils.str_convert_pydantic_field("[9.5, 8.0]", List[float]), [9.5, 8.0])
 
         # 测试集合 (Set)
         set_str = "[1, 2, 3]"
@@ -112,7 +120,9 @@ class TestBigtableRepository(unittest.TestCase):
 
         # 测试元组 (Tuple)
         tuple_str = '[10, "value", 30.5]'
-        self.assertEqual(BigtableUtils.str_convert_pydantic_field(tuple_str, Tuple[int, str, float]), (10, "value", 30.5))
+        self.assertEqual(
+            BigtableUtils.str_convert_pydantic_field(tuple_str, Tuple[int, str, float]), (10, "value", 30.5)
+        )
 
         # 测试 Pydantic 模型
         json_str = '{"name": "John", "age": 30, "is_active": true, "scores": [9.5, 8.0]}'
@@ -124,7 +134,9 @@ class TestBigtableRepository(unittest.TestCase):
         self.assertEqual(model.scores, [9.5, 8.0])
 
         # 测试嵌套模型
-        nested_json_str = '{"id": 1, "test_model": {"name": "John", "age": 30, "is_active": true, "scores": [9.5, 8.0]}}'
+        nested_json_str = (
+            '{"id": 1, "test_model": {"name": "John", "age": 30, "is_active": true, "scores": [9.5, 8.0]}}'
+        )
         nested_model = BigtableUtils.str_convert_pydantic_field(nested_json_str, TestNestedModel)
         self.assertIsInstance(nested_model, TestNestedModel)
         self.assertEqual(nested_model.id, 1)
@@ -167,7 +179,9 @@ class TestBigtableRepository(unittest.TestCase):
         # 测试 List[Dict[str, List[BaseModel]]] 类型
         complex_list_dict_str = '[{"group1": [{"name": "AA", "age": 30, "is_active": true, "scores": [100.0]}], "group2": [{"name": "BB", "age": 40, "is_active": false, "scores": [80.0]}]}, {"group3": [{"name": "CC", "age": 50, "is_active": true, "scores": [70.0]}], "group4": [{"name": "DD", "age": 60, "is_active": false, "scores": [60.0]}]}]'
         complex_list_dict_type = List[Dict[str, List[TestModel]]]
-        complex_list_dict_result = BigtableUtils.str_convert_pydantic_field(complex_list_dict_str, complex_list_dict_type)
+        complex_list_dict_result = BigtableUtils.str_convert_pydantic_field(
+            complex_list_dict_str, complex_list_dict_type
+        )
 
         self.assertEqual(complex_list_dict_result[0]["group1"][0].name, "AA")
         self.assertEqual(complex_list_dict_result[1]["group3"][0].name, "CC")
@@ -176,6 +190,6 @@ class TestBigtableRepository(unittest.TestCase):
         with self.assertRaises(TypeError):
             BigtableUtils.str_convert_pydantic_field("test", frozenset)
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()
