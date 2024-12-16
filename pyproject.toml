@@ -22,7 +22,7 @@ line_length = 120
 
 [tool.poetry]
 name = "favie-data-common"
-version = "v0.0.10-alpha.1"
+version = "v0.0.10-alpha.2"
 description = ""
 authors = ["winston <winston@srp.one>"]
 readme = "README.md"
@@ -40,3 +40,6 @@ business-rules="1.1.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+# [tool.poetry.repositories.myrepo]
+# url = "https://upload.pypi.org/legacy/"
