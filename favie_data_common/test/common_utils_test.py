@@ -117,6 +117,14 @@ class TestCommonUtils(unittest.TestCase):
                 result = CommonUtils.datetime_string_to_timestamp(date_format)
                 self.assertAlmostEqual(result, expected, places=6)
 
+    def test_reverse_hostname(self):
+        self.assertEqual(
+            CommonUtils.reverse_hostname_and_remove_http("http://www.example.com/a/b/c?d=e"),
+            "com.example.www/a/b/c?d=e",
+        )
+        self.assertEqual(CommonUtils.reverse_hostname_and_remove_http("example.com/a"), "com.example/a")
+        self.assertIsNone(CommonUtils.reverse_hostname_and_remove_http(None))
+
 
 if __name__ == "__main__":
     unittest.main()

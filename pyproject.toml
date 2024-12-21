@@ -22,7 +22,7 @@ line_length = 120
 
 [tool.poetry]
 name = "favie-data-common"
-version = "v0.0.11-alpha.0"
+version = "v0.0.11-alpha.1"
 description = ""
 authors = ["winston <winston@srp.one>"]
 readme = "README.md"
