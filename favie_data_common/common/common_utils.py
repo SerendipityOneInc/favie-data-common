@@ -3,7 +3,7 @@ import re
 from collections.abc import Sized
 from datetime import datetime, timezone
 from typing import Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import tldextract
 from dateutil import parser
@@ -152,9 +152,37 @@ class CommonUtils:
         domain = CommonUtils.get_domain(url)
         return f"{sub_domain}.{domain}" if sub_domain else domain
 
+    @staticmethod
     def serialize(datas):
         list_wrapper = SerializeWrapper(datas=datas)
         return list_wrapper.model_dump_json(exclude_none=True)[9:-1]
+
+    @staticmethod
+    def reverse_hostname_and_remove_http(url):
+        if url is None:
+            return None
+
+        if not url.startswith("http"):
+            url = "http://" + url
+        # 解析 URL
+        parsed_url = urlparse(url)
+
+        # 获得并反转主机名
+        hostname_parts = parsed_url.hostname.split(".")
+        reversed_hostname = ".".join(reversed(hostname_parts))
+
+        # 创建新的 URL，带有反转后的主机名
+        new_netloc = reversed_hostname
+        if parsed_url.port:
+            new_netloc += f":{parsed_url.port}"
+
+        # 将修改后的各部分组合成完整 URL
+        new_url = urlunparse(
+            ("", new_netloc, parsed_url.path, parsed_url.params, parsed_url.query, parsed_url.fragment)
+        )
+        if new_url.startswith("//"):
+            new_url = new_url[2:]
+        return new_url
 
 
 if __name__ == "__main__":

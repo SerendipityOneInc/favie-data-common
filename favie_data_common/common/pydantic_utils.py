@@ -81,7 +81,7 @@ class PydanticUtils:
         source_obj: Optional[BaseModel],
         dest_obj: Optional[BaseModel],
         merge_fields: list[str] = None,
-        deep_merge_fields: list[str] = None,
+        deep_merge_config: dict[str, dict] = None,
     ) -> Optional[BaseModel]:
         """
         source_obj : source object for merging
@@ -104,9 +104,13 @@ class PydanticUtils:
             if hasattr(source_obj, field_name):
                 source_value = getattr(source_obj, field_name)
                 if source_value is not None:
-                    if deep_merge_fields and field_name in deep_merge_fields and isinstance(source_value, BaseModel):
+                    if deep_merge_config and field_name in deep_merge_config and isinstance(source_value, BaseModel):
                         dest_value = getattr(dest_obj, field_name, None)
-                        merged_value = PydanticUtils.merge_object(source_obj=source_value, dest_obj=dest_value)
+                        merged_value = PydanticUtils.merge_object(
+                            source_obj=source_value,
+                            dest_obj=dest_value,
+                            deep_merge_config=deep_merge_config.get(field_name),
+                        )
                         setattr(dest_obj, field_name, merged_value)
                     else:
                         setattr(dest_obj, field_name, source_value)

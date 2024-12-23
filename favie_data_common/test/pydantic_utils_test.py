@@ -10,6 +10,7 @@ from favie_data_common.common.pydantic_utils import PydanticUtils  # 请替换�
 class TestModel(BaseModel):
     name: Optional[str] = None
     age: Optional[int] = None
+    address: Optional["Address"] = None
 
 
 class ComplexTestModel(BaseModel):
@@ -109,16 +110,36 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertEqual(merged.age, 30)
 
         # 测试深度合并
-        source_complex = ComplexTestModel(id=1, data=TestModel(name="Alice", age=30), tags=["tag1"])
-        dest_complex = ComplexTestModel(id=2, data=TestModel(name="Bob", age=25), tags=["tag2"])
+        source_complex = ComplexTestModel(
+            id=1,
+            data=TestModel(name="Alice", age=30, address=Address(city="Shanghai", street="Nanjing Road")),
+            tags=["tag1"],
+        )
+        dest_complex = ComplexTestModel(
+            id=2,
+            data=TestModel(name="Bob", age=25, address=Address(city="Beijing", street="Wangfujing", zip_code="100000")),
+            tags=["tag2"],
+        )
 
         merged_complex = PydanticUtils.merge_object(
-            source_obj=source_complex, dest_obj=dest_complex, deep_merge_fields=["data"]
+            source_obj=source_complex, dest_obj=dest_complex, deep_merge_config={"data": {"address": {}}}
         )
         self.assertEqual(merged_complex.id, 1)
         self.assertEqual(merged_complex.data.name, "Alice")
         self.assertEqual(merged_complex.data.age, 30)
         self.assertEqual(merged_complex.tags, ["tag1"])
+        self.assertEqual(merged_complex.data.address.city, "Shanghai")
+        self.assertEqual(merged_complex.data.address.zip_code, "100000")
+
+        merged_complex = PydanticUtils.merge_object(
+            source_obj=source_complex, dest_obj=dest_complex, deep_merge_config={"data": {}}
+        )
+        self.assertEqual(merged_complex.id, 1)
+        self.assertEqual(merged_complex.data.name, "Alice")
+        self.assertEqual(merged_complex.data.age, 30)
+        self.assertEqual(merged_complex.tags, ["tag1"])
+        self.assertEqual(merged_complex.data.address.city, "Shanghai")
+        self.assertEqual(merged_complex.data.address.zip_code, None)
 
         # 测试类型不匹配的情况
         self.assertIsNone(PydanticUtils.merge_object(source_obj=source, dest_obj=source_complex))
