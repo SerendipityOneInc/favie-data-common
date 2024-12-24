@@ -240,7 +240,7 @@ class BigtableRepository:
         fields : list of columns to read from data
         """
         combined_filter = self.__gen_filters(version=version, fields=fields)
-        row: Optional[PartialRowData] = self.table.read_row(row_key, filter_=combined_filter)
+        row: Optional[PartialRowData] = self.table.read_row(row_key.encode(self.charset), filter_=combined_filter)
         if row is None:
             self.logger.debug(f"Can't find model: row_key = {row_key}, version = {version} , fields = {fields}")
             return None
@@ -260,7 +260,7 @@ class BigtableRepository:
         row.commit()
 
     def __delete_model(self, *, row_key: str):
-        row = self.table.row(row_key)
+        row = self.table.row(row_key.encode(self.charset))
         row.delete()
         row.commit()
 
@@ -285,7 +285,7 @@ class BigtableRepository:
             return
         batcher = self.table.mutations_batcher()
         for row_key in row_keys:
-            row = self.table.row(row_key)
+            row = self.table.row(row_key.encode(self.charset))
             row.delete()
             batcher.mutate(row)
         batcher.flush()
@@ -330,7 +330,7 @@ class BigtableRepository:
     def __gen_row_set(self, row_keys: list[str]):
         row_set = RowSet()
         for row_key in row_keys:
-            row_set.add_row_key(row_key)
+            row_set.add_row_key(row_key.encode(self.charset))
 
         return row_set
 
@@ -374,7 +374,7 @@ class BigtableRepository:
     def __delete_migeration_fields(self, row_key: str, fields: set[str]):
         try:
             if self.cf_migration and fields:
-                row = self.table.row(row_key)
+                row = self.table.row(row_key.encode(self.charset))
                 for field in fields:
                     if field in self.cf_migration.keys():
                         old_cf, new_cf = self.cf_migration[field]
