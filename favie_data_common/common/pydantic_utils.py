@@ -151,13 +151,14 @@ class PydanticUtils:
         if PydanticUtils.is_type_of_pydantic_class(expected_type):
             # 对 Pydantic 模型进行处理
             if isinstance(value, dict):
-                fields = PydanticUtils.get_fields_of_pydantic_class(expected_type)
-                return expected_type(
-                    **{
-                        field_name: PydanticUtils.deserialize_data(field_type, value.get(field_name))
-                        for field_name, field_type in fields
-                    }
-                )
+                # fields = PydanticUtils.get_fields_of_pydantic_class(expected_type)
+                # return expected_type(
+                #     **{
+                #         field_name: PydanticUtils.deserialize_data(field_type, value.get(field_name))
+                #         for field_name, field_type in fields
+                #     }
+                # )
+                return expected_type(**value)
             else:
                 return value
 
