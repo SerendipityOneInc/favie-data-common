@@ -46,6 +46,7 @@ class BigtableRepository:
         cf_migration: dict[str, (str, str)] = None,
         derializer_config: dict[str, FieldDeserializer] = None,
         model_define_deserializer: bool = False,
+        charset: str = "utf-8",
     ):
         """
         bigtable_project_id: BigTable 项目 ID
@@ -77,6 +78,7 @@ class BigtableRepository:
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.model_define_deserializer = model_define_deserializer
         self.logger = logging.getLogger(__name__)
+        self.charset = charset
 
     def __init_cf_list(self):
         cf_set = set([self.default_cf]) if self.default_cf else set()  # 确保self.default_cf成为集合，即使它是字符串
@@ -208,7 +210,7 @@ class BigtableRepository:
             return None
 
         row_key_filter_regex = f"{rowkey_prefix}.*"
-        row_key_filter = RowKeyRegexFilter(row_key_filter_regex.encode("utf-8"))
+        row_key_filter = RowKeyRegexFilter(row_key_filter_regex.encode(self.charset))
         other_filters = filters if filters else []
         other_filters.append(row_key_filter)
 
@@ -238,7 +240,7 @@ class BigtableRepository:
         fields : list of columns to read from data
         """
         combined_filter = self.__gen_filters(version=version, fields=fields)
-        row: Optional[PartialRowData] = self.table.read_row(row_key, filter_=combined_filter)
+        row: Optional[PartialRowData] = self.table.read_row(row_key.encode(self.charset), filter_=combined_filter)
         if row is None:
             self.logger.debug(f"Can't find model: row_key = {row_key}, version = {version} , fields = {fields}")
             return None
@@ -258,7 +260,7 @@ class BigtableRepository:
         row.commit()
 
     def __delete_model(self, *, row_key: str):
-        row = self.table.row(row_key)
+        row = self.table.row(row_key.encode(self.charset))
         row.delete()
         row.commit()
 
@@ -283,7 +285,7 @@ class BigtableRepository:
             return
         batcher = self.table.mutations_batcher()
         for row_key in row_keys:
-            row = self.table.row(row_key)
+            row = self.table.row(row_key.encode(self.charset))
             row.delete()
             batcher.mutate(row)
         batcher.flush()
@@ -301,7 +303,7 @@ class BigtableRepository:
         version : version number of saved data
         """
         row_key = self.gen_row_key(model)
-        row: DirectRow = self.table.direct_row(row_key)
+        row: DirectRow = self.table.direct_row(row_key.encode(self.charset))
         timestamp = None
         if version is not None:
             timestamp = datetime.fromtimestamp(version, tz=timezone.utc)
@@ -318,7 +320,7 @@ class BigtableRepository:
                 self.cf_config.get(field_name, self.default_cf) if self.cf_config is not None else self.default_cf
             )
             if save_cfs is None or column_family in save_cfs:
-                column_value = BigtableUtils.pydantic_field_convert_str(field_value).encode("utf-8")
+                column_value = BigtableUtils.pydantic_field_convert_str(field_value).encode(self.charset)
                 if timestamp is not None:
                     row.set_cell(column_family, field_name, column_value, timestamp=timestamp)
                 else:
@@ -328,7 +330,7 @@ class BigtableRepository:
     def __gen_row_set(self, row_keys: list[str]):
         row_set = RowSet()
         for row_key in row_keys:
-            row_set.add_row_key(row_key)
+            row_set.add_row_key(row_key.encode(self.charset))
 
         return row_set
 
@@ -340,8 +342,8 @@ class BigtableRepository:
             for column_qualifier, cell_list in row.cells[column_family].items():
                 if len(cell_list) > 0:
                     cell_value = cell_list[0].value
-                    field_value = cell_value.decode("utf-8")
-                    field_name = column_qualifier.decode("utf-8")
+                    field_value = cell_value.decode(self.charset)
+                    field_name = column_qualifier.decode(self.charset)
                     field_type = PydanticUtils.get_native_field_type(self.model_class, field_name)
                     # if field_type is None,ignore this field,otherwise convert it to pydantic field
                     if field_type is not None:
@@ -372,11 +374,11 @@ class BigtableRepository:
     def __delete_migeration_fields(self, row_key: str, fields: set[str]):
         try:
             if self.cf_migration and fields:
-                row = self.table.row(row_key)
+                row = self.table.row(row_key.encode(self.charset))
                 for field in fields:
                     if field in self.cf_migration.keys():
                         old_cf, new_cf = self.cf_migration[field]
-                        row.delete_cell(old_cf, field.encode("utf-8"))
+                        row.delete_cell(old_cf, field.encode(self.charset))
                 row.commit()
         except Exception as e:
             self.logger.error(f"delete migration fields failed,row_key:{row_key},fields:{fields},error:{e}")
@@ -394,7 +396,7 @@ class BigtableRepository:
 
         # 增加列过滤器
         if CommonUtils.list_len(fields) > 0:
-            column_filters = [ColumnQualifierRegexFilter(qualifier.encode("utf-8")) for qualifier in fields]
+            column_filters = [ColumnQualifierRegexFilter(qualifier.encode(self.charset)) for qualifier in fields]
             # 表达OR关系
             union_filters = (
                 RowFilterUnion(filters=column_filters)
