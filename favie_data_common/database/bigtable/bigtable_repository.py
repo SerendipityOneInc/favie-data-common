@@ -134,6 +134,9 @@ class BigtableRepository:
             self.bigtable_index.delete_indexes(models=models)
         self.__delete_models(row_keys=[self.gen_row_key(model) for model in models])
 
+    def delete_fields(self, *, model: BaseModel, deleted_fields: list[str]):
+        self.executor.submit(self.__delete_fields, self.gen_row_key(model), deleted_fields)
+
     def upsert_model(self, *, model: BaseModel, save_fields: list[str] = None, version: int = None):
         """
         model : pydantic object need to be upserted
@@ -374,14 +377,27 @@ class BigtableRepository:
     def __delete_migeration_fields(self, row_key: str, fields: set[str]):
         try:
             if self.cf_migration and fields:
-                row = self.table.row(row_key.encode(self.charset))
+                # row = self.table.row(row_key.encode(self.charset))
+                delete_fields = []
                 for field in fields:
                     if field in self.cf_migration.keys():
-                        old_cf, new_cf = self.cf_migration[field]
-                        row.delete_cell(old_cf, field.encode(self.charset))
-                row.commit()
+                        old_cf, _ = self.cf_migration[field]
+                        delete_fields.append((old_cf, field))
+                        # row.delete_cell(old_cf, field.encode(self.charset))
+                # row.commit()
+                self.__delete_fields(row_key, delete_fields)
         except Exception as e:
             self.logger.error(f"delete migration fields failed,row_key:{row_key},fields:{fields},error:{e}")
+
+    def __delete_fields(self, row_key: str, fields: list[(str, str)]):
+        try:
+            if fields:
+                row = self.table.row(row_key.encode(self.charset))
+                for cf, field in fields:
+                    row.delete_cell(cf, field.encode(self.charset))
+                row.commit()
+        except Exception as e:
+            self.logger.error(f"delete fields failed,row_key:{row_key},fields:{fields},error:{e}")
 
     # generate filters for querying bigtable based on parameters
     def __gen_filters(self, *, version: Optional[str], fields: Optional[list[str]], other_filters: list = None):

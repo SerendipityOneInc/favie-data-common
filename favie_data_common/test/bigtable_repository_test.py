@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, conint
@@ -188,6 +189,14 @@ def test_delete_models():
     person_repository.delete_models(models=persons)
 
 
+def test_delete_fields():
+    for i in range(1, 10):
+        person = Person(id=f"B0000{i}", city="hangzhou" if i % 2 == 0 else "beijing")
+        person_repository.delete_fields(model=person, deleted_fields=[("new_cf", "city"), ("main_cf", "favorite")])
+
+    time.sleep(10)
+
+
 if __name__ == "__main__":
     # test_scan()
     # test_query_by_city()
@@ -196,7 +205,8 @@ if __name__ == "__main__":
     # time.sleep(10)
 
     test_save()
-    test_batch_save()
-    test_read_by_model()
+    # test_batch_save()
+    # test_read_by_model()
+    # test_delete_fields()
     # test_delete_model()
     # test_delete_models()
