@@ -93,6 +93,7 @@ class BigtableRepository:
         save_cfs: Optional[Set[str]] = None,
         version: int = None,
         exclude_fields: list[str] = None,
+        ignore_index: bool = False,
     ):
         """
         model : pydantic object need to be saved
@@ -100,7 +101,7 @@ class BigtableRepository:
         version : version number of saved data
         """
         self.__save_model(model=model, save_cfs=save_cfs, version=version, exclude_fields=exclude_fields)
-        if self.bigtable_index:
+        if self.bigtable_index and not ignore_index:
             self.bigtable_index.save_index(model=model, version=version)
 
     def delete_model(self, *, model: BaseModel):
