@@ -5,6 +5,12 @@ import requests
 from pydantic import BaseModel
 
 
+class HttpResult(BaseModel):
+    status: Optional[int] = None
+    message: Optional[str] = None
+    data: Optional[BaseModel] = None
+
+
 class HttpClient:
     @staticmethod
     def call_http_api(url, result_class: BaseModel, method="POST", headers=None, data=None, params=None):
@@ -31,14 +37,16 @@ class HttpClient:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
             # 检查是否成功响应
-            response.raise_for_status()  # 如果返回错误状态码，将引发HTTPError
-
-            return result_class.model_validate(response.json())  # 返回 JSON 格式的响应
-
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error: {http_err}")
+            # response.raise_for_status()  # 如果返回错误状态码，将引发HTTPError
+            if response.status_code != 200:
+                return HttpResult(status=response.status_code, message=response.text)
+            else:
+                return HttpResult(
+                    status=response.status_code, data=result_class.model_validate(response.json())
+                )  # 返回 JSON 格式的响应
+            # result_class.model_validate(response.json())  # 返回 JSON 格式的响应
         except Exception as err:
-            print(f"Error: {err}")
+            return HttpResult(status=500, message=str(err))
 
 
 class CategoryPredictResult(BaseModel):
@@ -62,5 +70,8 @@ if __name__ == "__main__":
         "return_score": True,
     }
 
-    response = HttpClient.call_http_api(url, CategoryPredictResult, method="POST", headers=headers, data=data)
-    print(response.model_dump_json())
+    http_result = HttpClient.call_http_api(url, CategoryPredictResult, method="POST", headers=headers, data=data)
+    if http_result.status != 200:
+        print(f"调用API失败：{http_result.message}")
+    else:
+        print(http_result.data.model_dump_json())
