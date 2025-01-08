@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, conint
 from favie_data_common.common.common_utils import CommonUtils
 from favie_data_common.database.bigtable.bigtable_repository import (
     BigtableIndex,
-    BigtableIndexRepository,
     BigtableRepository,
+    BigtableSingleMapIndexRepository,
     FieldDeserializer,
 )
 from favie_data_common.database.bigtable.bigtable_utils import BigtableUtils
@@ -65,7 +65,7 @@ def gen_review_index(person: Person):
     return BigtableIndex(rowkey=gen_review_rowkey(person=person), index_key=person.city)
 
 
-person_city_index_repository = BigtableIndexRepository(
+person_city_index_repository = BigtableSingleMapIndexRepository(
     bigtable_project_id=bigtable_config["project_id"],
     bigtable_instance_id=bigtable_config["instance_id"],
     bigtable_index_table_id="favie_test_table_index",

@@ -485,7 +485,7 @@ class BigtableIndexRepository:
             bigtable_table_id=bigtable_index_table_id,
             model_class=index_class if index_class else BigtableIndex,
             default_cf=index_cf,
-            gen_rowkey=self.__gen_rowkey,
+            gen_rowkey=self._gen_rowkey,
         )
 
     def save_index(self, *, model: BaseModel, version: int = None):
@@ -514,5 +514,35 @@ class BigtableIndexRepository:
         if self.index_table:
             self.index_table.close()
 
-    def __gen_rowkey(self, model: BigtableIndex):
+    def _gen_rowkey(self, model: BigtableIndex):
         return f"{model.index_key}#{model.rowkey}"
+
+
+class BigtableSingleMapIndexRepository(BigtableIndexRepository):
+    def __init__(
+        self,
+        *,
+        bigtable_project_id,
+        bigtable_instance_id,
+        bigtable_index_table_id,
+        index_class: Type[BigtableIndex] = None,
+        index_cf: str = None,
+        gen_index: Callable[[BaseModel], BigtableIndex] = None,
+    ):
+        super().__init__(
+            bigtable_project_id=bigtable_project_id,
+            bigtable_instance_id=bigtable_instance_id,
+            bigtable_index_table_id=bigtable_index_table_id,
+            index_class=index_class,
+            index_cf=index_cf,
+            gen_index=gen_index,
+        )
+
+    def scan_index(
+        self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
+    ) -> list[BaseModel]:
+        models = self.index_table.read_model(row_key=index_key)
+        return models
+
+    def _gen_rowkey(self, model):
+        return model.index_key
