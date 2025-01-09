@@ -168,7 +168,7 @@ class BigtableRepository:
             return None
         results = []
         for row in rows:
-            results.append((row.row_key.decode(self.charset), self.__convert_row_to_model(row)))
+            results.append(self.__convert_row_to_model(row))
         return results if CommonUtils.list_len(results) > 0 else None
 
     def query_models(
@@ -185,18 +185,13 @@ class BigtableRepository:
         if not self.bigtable_index:
             self.logger.error("Bigtable index is not configured")
             return None
-        start = datetime.now().timestamp()
         indexes: list[BigtableIndex] = self.bigtable_index.scan_index(
             index_key=index_key, version=version, limit=limit, filters=filters
         )
         if CommonUtils.list_len(indexes) == 0:
             return None
-        self.logger.info("Query index time cost: %s", datetime.now().timestamp() - start)
-
-        start = datetime.now().timestamp()
         row_keys = [index.rowkey for index in indexes]
         results = self.read_models(row_keys=row_keys, version=version, fields=fields)
-        self.logger.info("Query data time cost: %s", datetime.now().timestamp() - start)
         return results
 
     def scan_models(
@@ -542,11 +537,12 @@ class BigtableSingleMapIndexRepository(BigtableIndexRepository):
             index_cf=index_cf,
             gen_index=gen_index,
         )
+        self.logger = logging.getLogger(__name__)
 
     def scan_index(
         self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
     ) -> list[BaseModel]:
-        return self.index_table.read_model(row_key=index_key)
+        return [self.index_table.read_model(row_key=index_key)]
 
     def read_indexes(self, *, index_keys: List[str], version: int = None, filters: list = None):
         return self.index_table.read_models(row_keys=index_keys, version=version, fields=None)

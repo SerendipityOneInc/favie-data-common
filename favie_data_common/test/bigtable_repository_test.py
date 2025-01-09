@@ -199,12 +199,12 @@ def test_delete_fields():
 
 if __name__ == "__main__":
     # test_scan()
-    # test_query_by_city()
+    test_query_by_city()
     # test_read_with_cf_migeration()
     # test_read_with_only_default_cf()
     # time.sleep(10)
 
-    test_save()
+    # test_save()
     # test_batch_save()
     # test_read_by_model()
     # test_delete_fields()
