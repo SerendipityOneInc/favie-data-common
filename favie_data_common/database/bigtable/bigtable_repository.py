@@ -162,7 +162,7 @@ class BigtableRepository:
             return None
         results = []
         for row in rows:
-            results.append(self.__convert_row_to_model(row))
+            results.append((row.row_key.decode(self.charset), self.__convert_row_to_model(row)))
         return results if CommonUtils.list_len(results) > 0 else None
 
     def query_models(
