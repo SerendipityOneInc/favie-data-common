@@ -507,8 +507,7 @@ class BigtableIndexRepository:
     def scan_index(
         self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
     ) -> list[BaseModel]:
-        models = self.index_table.scan_models(rowkey_prefix=index_key, limit=limit, filters=filters)
-        return models
+        return self.index_table.scan_models(rowkey_prefix=index_key, limit=limit, filters=filters)
 
     def close(self):
         if self.index_table:
@@ -541,8 +540,10 @@ class BigtableSingleMapIndexRepository(BigtableIndexRepository):
     def scan_index(
         self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
     ) -> list[BaseModel]:
-        models = self.index_table.read_model(row_key=index_key)
-        return models
+        return self.index_table.read_model(row_key=index_key)
+
+    def read_indexes(self, *, index_keys: List[str], version: int = None, filters: list = None):
+        return self.index_table.read_models(row_keys=index_keys, version=version, fields=None)
 
     def _gen_rowkey(self, model):
         return model.index_key
