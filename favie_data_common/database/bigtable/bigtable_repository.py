@@ -118,6 +118,7 @@ class BigtableRepository:
         save_cfs: Optional[Set[str]] = None,
         version: int = None,
         exclude_fields: list[str] = None,
+        ignore_indexes: list[str] = None,
     ):
         """
         models : list of pydantic objects need to be saved
@@ -126,7 +127,12 @@ class BigtableRepository:
         """
         self.__save_models(models=models, save_cfs=save_cfs, version=version, exclude_fields=exclude_fields)
         if self.bigtable_index:
-            self.bigtable_index.save_indexes(models=models, version=version)
+            if ignore_indexes:
+                self.bigtable_index.save_indexes(
+                    models=[model for model in models if self.gen_row_key(model) not in ignore_indexes], version=version
+                )
+            else:
+                self.bigtable_index.save_indexes(models=models, version=version)
 
     def delete_models(self, *, models: List[BaseModel]):
         if not models:
