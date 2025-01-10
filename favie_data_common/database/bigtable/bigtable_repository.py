@@ -93,6 +93,7 @@ class BigtableRepository:
         save_cfs: Optional[Set[str]] = None,
         version: int = None,
         exclude_fields: list[str] = None,
+        ignore_index: bool = False,
     ):
         """
         model : pydantic object need to be saved
@@ -100,7 +101,7 @@ class BigtableRepository:
         version : version number of saved data
         """
         self.__save_model(model=model, save_cfs=save_cfs, version=version, exclude_fields=exclude_fields)
-        if self.bigtable_index:
+        if self.bigtable_index and not ignore_index:
             self.bigtable_index.save_index(model=model, version=version)
 
     def delete_model(self, *, model: BaseModel):
@@ -117,6 +118,7 @@ class BigtableRepository:
         save_cfs: Optional[Set[str]] = None,
         version: int = None,
         exclude_fields: list[str] = None,
+        ignore_indexes: list[str] = None,
     ):
         """
         models : list of pydantic objects need to be saved
@@ -125,7 +127,12 @@ class BigtableRepository:
         """
         self.__save_models(models=models, save_cfs=save_cfs, version=version, exclude_fields=exclude_fields)
         if self.bigtable_index:
-            self.bigtable_index.save_indexes(models=models, version=version)
+            if ignore_indexes:
+                self.bigtable_index.save_indexes(
+                    models=[model for model in models if self.gen_row_key(model) not in ignore_indexes], version=version
+                )
+            else:
+                self.bigtable_index.save_indexes(models=models, version=version)
 
     def delete_models(self, *, models: List[BaseModel]):
         if not models:
@@ -133,6 +140,9 @@ class BigtableRepository:
         if self.bigtable_index:
             self.bigtable_index.delete_indexes(models=models)
         self.__delete_models(row_keys=[self.gen_row_key(model) for model in models])
+
+    def delete_fields(self, *, model: BaseModel, deleted_fields: list[str]):
+        self.executor.submit(self.__delete_fields, self.gen_row_key(model), deleted_fields)
 
     def upsert_model(self, *, model: BaseModel, save_fields: list[str] = None, version: int = None):
         """
@@ -175,18 +185,13 @@ class BigtableRepository:
         if not self.bigtable_index:
             self.logger.error("Bigtable index is not configured")
             return None
-        start = datetime.now().timestamp()
         indexes: list[BigtableIndex] = self.bigtable_index.scan_index(
             index_key=index_key, version=version, limit=limit, filters=filters
         )
         if CommonUtils.list_len(indexes) == 0:
             return None
-        self.logger.info("Query index time cost: %s", datetime.now().timestamp() - start)
-
-        start = datetime.now().timestamp()
         row_keys = [index.rowkey for index in indexes]
         results = self.read_models(row_keys=row_keys, version=version, fields=fields)
-        self.logger.info("Query data time cost: %s", datetime.now().timestamp() - start)
         return results
 
     def scan_models(
@@ -374,14 +379,27 @@ class BigtableRepository:
     def __delete_migeration_fields(self, row_key: str, fields: set[str]):
         try:
             if self.cf_migration and fields:
-                row = self.table.row(row_key.encode(self.charset))
+                # row = self.table.row(row_key.encode(self.charset))
+                delete_fields = []
                 for field in fields:
                     if field in self.cf_migration.keys():
-                        old_cf, new_cf = self.cf_migration[field]
-                        row.delete_cell(old_cf, field.encode(self.charset))
-                row.commit()
+                        old_cf, _ = self.cf_migration[field]
+                        delete_fields.append((old_cf, field))
+                        # row.delete_cell(old_cf, field.encode(self.charset))
+                # row.commit()
+                self.__delete_fields(row_key, delete_fields)
         except Exception as e:
             self.logger.error(f"delete migration fields failed,row_key:{row_key},fields:{fields},error:{e}")
+
+    def __delete_fields(self, row_key: str, fields: list[(str, str)]):
+        try:
+            if fields:
+                row = self.table.row(row_key.encode(self.charset))
+                for cf, field in fields:
+                    row.delete_cell(cf, field.encode(self.charset))
+                row.commit()
+        except Exception as e:
+            self.logger.error(f"delete fields failed,row_key:{row_key},fields:{fields},error:{e}")
 
     # generate filters for querying bigtable based on parameters
     def __gen_filters(self, *, version: Optional[str], fields: Optional[list[str]], other_filters: list = None):
@@ -468,7 +486,7 @@ class BigtableIndexRepository:
             bigtable_table_id=bigtable_index_table_id,
             model_class=index_class if index_class else BigtableIndex,
             default_cf=index_cf,
-            gen_rowkey=self.__gen_rowkey,
+            gen_rowkey=self._gen_rowkey,
         )
 
     def save_index(self, *, model: BaseModel, version: int = None):
@@ -490,12 +508,45 @@ class BigtableIndexRepository:
     def scan_index(
         self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
     ) -> list[BaseModel]:
-        models = self.index_table.scan_models(rowkey_prefix=index_key, limit=limit, filters=filters)
-        return models
+        return self.index_table.scan_models(rowkey_prefix=index_key, limit=limit, filters=filters)
 
     def close(self):
         if self.index_table:
             self.index_table.close()
 
-    def __gen_rowkey(self, model: BigtableIndex):
+    def _gen_rowkey(self, model: BigtableIndex):
         return f"{model.index_key}#{model.rowkey}"
+
+
+class BigtableSingleMapIndexRepository(BigtableIndexRepository):
+    def __init__(
+        self,
+        *,
+        bigtable_project_id,
+        bigtable_instance_id,
+        bigtable_index_table_id,
+        index_class: Type[BigtableIndex] = None,
+        index_cf: str = None,
+        gen_index: Callable[[BaseModel], BigtableIndex] = None,
+    ):
+        super().__init__(
+            bigtable_project_id=bigtable_project_id,
+            bigtable_instance_id=bigtable_instance_id,
+            bigtable_index_table_id=bigtable_index_table_id,
+            index_class=index_class,
+            index_cf=index_cf,
+            gen_index=gen_index,
+        )
+        self.logger = logging.getLogger(__name__)
+
+    def scan_index(
+        self, *, index_key: str, version: int = None, filters: list = None, limit: int = None
+    ) -> list[BaseModel]:
+        index = self.index_table.read_model(row_key=index_key)
+        return [index] if index else None
+
+    def read_indexes(self, *, index_keys: List[str], version: int = None, filters: list = None):
+        return self.index_table.read_models(row_keys=index_keys, version=version, fields=None)
+
+    def _gen_rowkey(self, model):
+        return model.index_key
