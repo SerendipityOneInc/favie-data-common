@@ -144,6 +144,9 @@ class BigtableRepository:
     def delete_fields(self, *, model: BaseModel, deleted_fields: list[str]):
         self.executor.submit(self.__delete_fields, self.gen_row_key(model), deleted_fields)
 
+    def delete_fields_sync(self, *, model: BaseModel, deleted_fields: list[str]):
+        self.__delete_fields(self.gen_row_key(model), deleted_fields)
+
     def upsert_model(self, *, model: BaseModel, save_fields: list[str] = None, version: int = None):
         """
         model : pydantic object need to be upserted
