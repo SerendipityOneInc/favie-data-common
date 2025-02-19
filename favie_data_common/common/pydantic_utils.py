@@ -102,7 +102,7 @@ class PydanticUtils:
         )
 
         for field_name in fields_to_merge:
-            if field_name in ignore_fields:
+            if ignore_fields and field_name in ignore_fields:
                 continue
             if hasattr(source_obj, field_name):
                 source_value = getattr(source_obj, field_name)
