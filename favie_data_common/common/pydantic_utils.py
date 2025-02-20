@@ -91,7 +91,7 @@ class PydanticUtils:
         deep_merge_fields : fields requiring deep merge(only one level deep)
         """
         if dest_obj is None:
-            return source_obj
+            dest_obj = type(source_obj)()
         if source_obj is None:
             return dest_obj
         if not isinstance(source_obj, type(dest_obj)):
