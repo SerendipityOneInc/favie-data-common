@@ -148,6 +148,27 @@ class TestPydanticUtils(unittest.TestCase):
         self.assertEqual(PydanticUtils.merge_object(source_obj=None, dest_obj=dest), dest)
         self.assertEqual(PydanticUtils.merge_object(source_obj=source, dest_obj=None), source)
 
+    def test_merge_dest_is_none(self):
+        source = TestModel(name="Alice", age=30)
+        dest = None
+        merged = PydanticUtils.merge_object(source_obj=source, dest_obj=dest)
+        self.assertEqual(merged.name, "Alice")
+        self.assertEqual(merged.age, 30)
+
+    def test_merge_with_ignore_fields(self):
+        source = TestModel(name="Alice", age=40)
+        dest = TestModel(name="Bob", age=None)
+        merged = PydanticUtils.merge_object(source_obj=source, dest_obj=dest, ignore_fields=["name"])
+        self.assertEqual(merged.name, "Bob")
+        self.assertEqual(merged.age, 40)
+
+    def test_merge_with_ignore_fields_and_dest_is_none(self):
+        source = TestModel(name="Alice", age=30)
+        dest = None
+        merged = PydanticUtils.merge_object(source_obj=source, dest_obj=dest, ignore_fields=["age"])
+        self.assertEqual(merged.name, "Alice")
+        self.assertEqual(merged.age, None)
+
     def test_deserialize_basic_types(self):
         json_str = '{"id": 1, "name": "Item1"}'
         json_data = json.loads(json_str)
