@@ -166,6 +166,8 @@ class CommonUtils:
             url = "http://" + url
         # 解析 URL
         parsed_url = urlparse(url)
+        if parsed_url.hostname is None:
+            return None
 
         # 获得并反转主机名
         hostname_parts = parsed_url.hostname.split(".")
